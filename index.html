@@ -312,40 +312,22 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
 .er-ins-mat:hover { background:#f59e0b; color:#000; }
 
 @media print {
-  body { background:#fff !important; color:#000 !important; }
+  body { background:#fff !important; }
   .module-header,.main-grid>div:first-child,.tabs,.bulk-bar,.divider,button,.btn,.filter-row,
   #packagesContent,#historyContent,.tab-btn,#tab-packages,#tab-history,#tab-manual,#tab-textentry { display:none !important; }
-  .card { box-shadow:none !important; border:none !important; }
-  .preview-roll { gap:4px; }
-  .preview-row { background:#fff !important; border:1px dashed #ccc; }
+  .card { box-shadow:none !important; border:none !important; background:#fff !important; }
+  .preview-roll { gap:2px; }
+  .preview-row { background:#fff !important; border:1px dashed #bbb; break-inside:avoid; }
   .label-card {
     box-shadow:none !important;
     border:1px solid #999 !important;
     background:#fff !important;
-    page-break-inside:avoid;
+    break-inside:avoid;
     -webkit-print-color-adjust:exact;
     print-color-adjust:exact;
-    gap:3px;
   }
-  /* TÍTULO: negrita, grande — declaración COMPLETA para impresión */
-  .lc-line0 {
-    font-family:'Inter','Helvetica Neue',Arial,sans-serif !important;
-    font-size:10pt !important;
-    font-weight:700 !important;
-    font-style:normal !important;
-    color:#000 !important;
-    line-height:1.25 !important;
-    margin-bottom:2px !important;
-  }
-  /* CUERPO: normal/regular — declaración COMPLETA para impresión */
-  .lc-line {
-    font-family:'Inter','Helvetica Neue',Arial,sans-serif !important;
-    font-size:7pt !important;
-    font-weight:400 !important;
-    font-style:normal !important;
-    color:#333 !important;
-    line-height:1.35 !important;
-  }
+  /* Ocultar hint de edición al imprimir */
+  .lc-edit-hint { display:none !important; }
 }
 </style>
 </head>
@@ -1565,10 +1547,14 @@ function getManualLines() {
 function refreshManualPreview() {
   const lines=getManualLines();
   const card=document.getElementById('manualPreviewCard');
+  const FONT="Arial,Helvetica Neue,sans-serif";
+  const ST="font-family:"+FONT+";font-size:11px;font-weight:700;font-style:normal;line-height:1.3;color:#000;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-bottom:4px;";
+  const SB="font-family:"+FONT+";font-size:7.5px;font-weight:400;font-style:normal;line-height:1.5;color:#333;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-top:2px;";
+  const SS="width:55%;height:1px;background:#ccc;border:none;margin:3px auto 3px;display:block;";
   let html='';
   lines.slice(0,5).forEach((line,i)=>{
-    if (i===1) html+=`<div style="width:60%;height:1px;background:#ddd;margin:1px auto 2px;flex-shrink:0;"></div>`;
-    html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`;
+    if (i===1) html+=`<hr style="${SS}" />`;
+    html+=`<div style="${i===0?ST:SB}">${escHtml(line)}</div>`;
   });
   card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
 }
@@ -1732,6 +1718,33 @@ function renderPreview() {
     }
   });
 }
+// Estilos inline base para cada tipo de línea — inmunes al override del navegador en print
+const STYLE_TITLE = [
+  'font-family:"Inter","Helvetica Neue",Arial,sans-serif',
+  'font-size:11px','font-weight:700','font-style:normal',
+  'line-height:1.3','color:#000','text-transform:uppercase',
+  'letter-spacing:0.4px','word-break:break-word',
+  'overflow-wrap:break-word','white-space:normal',
+  'width:100%','text-align:center','display:block',
+  'margin-bottom:3px'
+].join(';');
+
+const STYLE_BODY = [
+  'font-family:"Inter","Helvetica Neue",Arial,sans-serif',
+  'font-size:7.5px','font-weight:400','font-style:normal',
+  'line-height:1.5','color:#444','text-transform:uppercase',
+  'letter-spacing:0.2px','word-break:break-word',
+  'overflow-wrap:break-word','white-space:normal',
+  'width:100%','text-align:center','display:block',
+  'margin-top:2px'
+].join(';');
+
+const STYLE_DIVIDER = [
+  'width:55%','height:1px','background:#ccc',
+  'margin:3px auto 4px','display:block','border:none',
+  'flex-shrink:0'
+].join(';');
+
 function createLabelCard(pkg,clickable=false) {
   const el=document.createElement('div');
   el.className='label-card';
@@ -1739,9 +1752,9 @@ function createLabelCard(pkg,clickable=false) {
   if (pkg.areaColor) html+=`<div class="lc-bar" style="background:${pkg.areaColor};"></div>`;
   const lines=(pkg.lines||[]).slice(0,5);
   lines.forEach((line,i)=>{
-    // Separador visual entre título (i=0) y cuerpo (i=1)
-    if (i===1) html+=`<div style="width:60%;height:1px;background:#ddd;margin:1px auto 2px;flex-shrink:0;"></div>`;
-    html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`;
+    if (i===1) html+=`<hr style="${STYLE_DIVIDER}" />`;
+    const s = i===0 ? STYLE_TITLE : STYLE_BODY;
+    html+=`<span style="${s}">${escHtml(line)}</span>`;
   });
   el.innerHTML=html;
   if (clickable) { el.title='Haz clic para editar'; el.addEventListener('click',()=>openEditModal(pkg.id)); }
@@ -1780,23 +1793,97 @@ function generateTsplTwoUp(pkgList) {
 function buildLabelTspl(pkg,xOff,lw,lh,dpi,dpm) {
   const lines=(pkg.lines||[]).slice(0,5);
   if (!lines.length) return '';
-  const is300=dpi===300;
-  const FW={'1':is300?12:8,'2':is300?18:12,'3':is300?24:16};
-  const FH={'1':is300?18:12,'2':is300?30:20,'3':is300?36:24};
-  const nl=sanitizeTspl(lines[0].substring(0,30));
-  const nf=lines.length<=3?'3':'2';
-  const nx=xOff+Math.max(2,Math.floor((lw-nl.length*FW[nf])/2));
-  const nh=FH[nf]+4, bh=FH['2']+3;
-  const tot=nh+(lines.length-1)*bh;
-  let y=Math.max(4,Math.floor((lh-tot)/2));
-  let c=`TEXT ${nx},${y},"${nf}",0,1,1,"${nl}"\n`;
-  y+=nh;
-  for (let i=1;i<lines.length;i++) {
-    const s=sanitizeTspl(lines[i].substring(0,38));
-    const x=xOff+Math.max(2,Math.floor((lw-s.length*FW['2'])/2));
-    c+=`TEXT ${x},${y},"2",0,1,1,"${s}"\n`;
-    y+=bh;
+  const is300=(dpi===300);
+
+  // ── Tabla de fuentes internas TSC ─────────────────────────────
+  const FONTS = {
+    title: {
+      id:  is300?'3':'3',         // fuente grande para título
+      cw:  is300?24:16,           // char width en dots
+      ch:  is300?36:24,           // char height en dots
+    },
+    body: {
+      id:  '2',                   // fuente media para cuerpo
+      cw:  is300?18:12,
+      ch:  is300?30:20,
+    }
+  };
+
+  // Margen interno por etiqueta (dots)
+  const marginX = Math.round(3*dpm);
+  const usableW = lw - marginX*2;
+
+  // ── Calcular líneas con wrap por carácter disponible ──────────
+  function wrapLine(text, font) {
+    const maxChars = Math.floor(usableW / font.cw);
+    if (text.length <= maxChars) return [text];
+    const words = text.split(' ');
+    const result = [];
+    let cur = '';
+    for (const w of words) {
+      if (!cur) { cur=w; continue; }
+      if ((cur+' '+w).length <= maxChars) { cur+=' '+w; }
+      else { result.push(cur); cur=w; }
+    }
+    if (cur) result.push(cur);
+    return result.length ? result : [text.substring(0,maxChars)];
   }
+
+  // Expandir líneas con wrap real basado en dots disponibles
+  const expanded = [];
+  lines.forEach((line,i) => {
+    const font = i===0 ? FONTS.title : FONTS.body;
+    wrapLine(sanitizeTspl(line), font).forEach(l => expanded.push({text:l, isTitle:(i===0)}));
+  });
+  const finalLines = expanded.slice(0,6); // máximo 6 sublíneas en la etiqueta física
+
+  // ── Calcular altura total y posición Y inicial centrada ───────
+  const titleH = FONTS.title.ch + 6;   // altura título + padding generoso
+  const bodyH  = FONTS.body.ch  + 7;   // altura cuerpo + padding (más espacio entre líneas)
+  const sepH   = 5;                     // separador visual entre título y cuerpo
+
+  let totalH = 0;
+  let hasSep = false;
+  finalLines.forEach((l,i) => {
+    if (i===0) { totalH += titleH; }
+    else {
+      if (!hasSep && !l.isTitle) { totalH += sepH; hasSep=true; }
+      totalH += bodyH;
+    }
+  });
+
+  let y = Math.max(Math.round(2*dpm), Math.floor((lh - totalH) / 2));
+  let c = '';
+  let sepDrawn = false;
+
+  finalLines.forEach((l,i) => {
+    const font = l.isTitle ? FONTS.title : FONTS.body;
+    const safe = l.text;
+
+    // Dibujar separador horizontal antes de la primera línea de cuerpo
+    if (!l.isTitle && !sepDrawn) {
+      const barW = Math.round(usableW * 0.5);
+      const bx   = xOff + marginX + Math.floor((usableW - barW)/2);
+      c += `BAR ${bx},${y+1},${barW},1\n`;
+      y += sepH;
+      sepDrawn = true;
+    }
+
+    // Centrar texto horizontalmente
+    const textW = safe.length * font.cw;
+    const tx = xOff + marginX + Math.max(0, Math.floor((usableW - textW)/2));
+
+    if (l.isTitle) {
+      // Título: fuente media, multiplicador 1,1
+      c += `TEXT ${tx},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      y += titleH;
+    } else {
+      // Cuerpo: fuente pequeña, multiplicador 1,1 (fuente "1" ya es delgada)
+      c += `TEXT ${tx},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      y += bodyH;
+    }
+  });
+
   return c;
 }
 function sanitizeTspl(s) {
@@ -1848,7 +1935,66 @@ async function executePrint(pkgList) {
     saveHistory(pkgList,'error'); console.error('[PRINT]',err);
   }
 }
-function printBrowserFallback() { window.print(); }
+function printBrowserFallback() {
+  const sel = getAllPackages().filter(p => selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona al menos un paquete', 'error'); return; }
+
+  // Construir HTML de etiquetas con estilos 100% inline — inmune a cualquier override
+  let labelRows = '';
+  sel.forEach(pkg => {
+    const qty = pkg.labelsOverride || labelsCfg.labelsPerPkg;
+    const reps = Math.ceil(qty / 2);
+    for (let r = 0; r < reps; r++) {
+      labelRows += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;page-break-inside:avoid;">`;
+      labelRows += buildPrintLabelHTML(pkg);
+      labelRows += buildPrintLabelHTML(pkg);
+      labelRows += `</div>`;
+    }
+  });
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Etiquetas — Impresión</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; font-family:'Inter',Arial,sans-serif; padding:10px; }
+  @media print {
+    body { padding:4px; }
+    @page { margin:6mm; }
+  }
+</style>
+</head><body>
+${labelRows}
+<script>window.onload=function(){ window.print(); }<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function buildPrintLabelHTML(pkg) {
+  const lines = (pkg.lines || []).slice(0, 5);
+  const colorBar = pkg.areaColor
+    ? `<div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:${pkg.areaColor};border-radius:4px 0 0 4px;"></div>`
+    : '';
+
+  let content = '';
+  lines.forEach((line, i) => {
+    if (i === 1) {
+      content += `<hr style="width:55%;height:1px;background:#bbb;border:none;margin:3px auto 4px;display:block;" />`;
+    }
+    if (i === 0) {
+      // TÍTULO: negrita, grande — todo inline, sin clases
+      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:10pt;font-weight:700;font-style:normal;color:#000;text-transform:uppercase;letter-spacing:0.4px;line-height:1.3;word-break:break-word;margin-bottom:2px;">${escHtml(line)}</span>`;
+    } else {
+      // CUERPO: regular, pequeño — todo inline, sin clases
+      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:7pt;font-weight:400;font-style:normal;color:#333;text-transform:uppercase;letter-spacing:0.2px;line-height:1.45;word-break:break-word;margin-top:1px;">${escHtml(line)}</span>`;
+    }
+  });
+
+  return `<div style="position:relative;background:#fff;border:1px solid #999;border-radius:5px;padding:6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70px;aspect-ratio:2/1;overflow:hidden;text-align:center;">
+    ${colorBar}${content}
+  </div>`;
+}
 
 // ═══════════════════════════════════════════════
 //  EDIT MODAL
@@ -1897,10 +2043,14 @@ function removeEditLine(btn) {
 function refreshModalPreview() {
   const lines=getEditLines();
   const card=document.getElementById('modalPreviewCard');
+  const FONT="Arial,Helvetica Neue,sans-serif";
+  const ST="font-family:"+FONT+";font-size:11px;font-weight:700;font-style:normal;line-height:1.3;color:#000;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-bottom:4px;";
+  const SB="font-family:"+FONT+";font-size:7.5px;font-weight:400;font-style:normal;line-height:1.5;color:#333;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-top:2px;";
+  const SS="width:55%;height:1px;background:#ccc;border:none;margin:3px auto 3px;display:block;";
   let html='';
   lines.slice(0,5).forEach((line,i)=>{
-    if (i===1) html+=`<div style="width:60%;height:1px;background:#ddd;margin:1px auto 2px;flex-shrink:0;"></div>`;
-    html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`;
+    if (i===1) html+=`<hr style="${SS}" />`;
+    html+=`<div style="${i===0?ST:SB}">${escHtml(line)}</div>`;
   });
   card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
 }
