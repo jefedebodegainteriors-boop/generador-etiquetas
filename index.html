@@ -158,12 +158,55 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
 .preview-roll { display:flex; flex-direction:column; gap:6px; }
 .preview-row { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px 6px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); position:relative; }
 .preview-row::before { content:''; position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--border-light); transform:translateX(-50%); }
-.label-card { width:100%; aspect-ratio:2/1; min-height:90px; background:#fff; border-radius:6px; border:1px solid #ccc; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; box-shadow:var(--shadow-sm); position:relative; color:#111; cursor:pointer; transition:transform 0.15s,box-shadow 0.15s; padding:6px 8px; text-align:center; font-family:'Arial','Helvetica Neue',sans-serif; gap:1px; }
+
+/* ── LABEL CARD ─────────────────────────────────────────────── */
+.label-card {
+  width:100%; aspect-ratio:2/1; min-height:96px;
+  background:#fff; border-radius:6px; border:1px solid #ccc;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  overflow:hidden; box-shadow:var(--shadow-sm);
+  position:relative; color:#111; cursor:pointer;
+  transition:transform 0.15s,box-shadow 0.15s;
+  padding:6px 10px; text-align:center;
+  gap:3px; /* separación entre líneas */
+}
 .label-card:hover { transform:scale(1.02); box-shadow:0 6px 20px rgba(0,0,0,0.5); }
 .label-card .lc-edit-hint { position:absolute; top:3px; right:5px; font-size:9px; color:#aaa; opacity:0; transition:opacity 0.2s; }
 .label-card:hover .lc-edit-hint { opacity:1; }
-.lc-line0 { font-size:11px; font-weight:700; line-height:1.2; color:#000; text-transform:uppercase; letter-spacing:0.3px; font-family:'Inter','Arial','Helvetica Neue',sans-serif; word-break:break-word; overflow-wrap:break-word; white-space:normal; width:100%; max-width:100%; }
-.lc-line  { font-size:7.5px; font-weight:400; line-height:1.3; color:#333; text-transform:uppercase; letter-spacing:0.2px; font-family:'Inter','Arial','Helvetica Neue',sans-serif; word-break:break-word; overflow-wrap:break-word; white-space:normal; width:100%; max-width:100%; }
+
+/* Línea 0 = TÍTULO (negrita, más grande) */
+.lc-line0 {
+  font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+  font-size:11px;
+  font-weight:700;
+  font-style:normal;
+  line-height:1.25;
+  color:#000;
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  white-space:normal;
+  width:100%; max-width:100%;
+  margin-bottom:2px; /* separación extra título → cuerpo */
+}
+
+/* Líneas 1+ = CUERPO (normal, más pequeño, claramente diferente) */
+.lc-line {
+  font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+  font-size:7.5px;
+  font-weight:400;
+  font-style:normal;
+  line-height:1.35;
+  color:#444;
+  text-transform:uppercase;
+  letter-spacing:0.2px;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  white-space:normal;
+  width:100%; max-width:100%;
+}
 
 /* MISC */
 .empty-state { text-align:center; padding:40px 20px; color:var(--text-muted); }
@@ -274,11 +317,35 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
   #packagesContent,#historyContent,.tab-btn,#tab-packages,#tab-history,#tab-manual,#tab-textentry { display:none !important; }
   .card { box-shadow:none !important; border:none !important; }
   .preview-roll { gap:4px; }
-  .preview-row { background:#fff; border:1px dashed #ccc; }
-  .label-card { box-shadow:none; border:1px solid #ccc; page-break-inside:avoid; }
-  .lc-line0 { font-weight:700 !important; font-size:10px !important; color:#000 !important; }
-  .lc-line  { font-weight:400 !important; font-size:7px !important; color:#333 !important; }
-  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .preview-row { background:#fff !important; border:1px dashed #ccc; }
+  .label-card {
+    box-shadow:none !important;
+    border:1px solid #999 !important;
+    background:#fff !important;
+    page-break-inside:avoid;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+    gap:3px;
+  }
+  /* TÍTULO: negrita, grande — declaración COMPLETA para impresión */
+  .lc-line0 {
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif !important;
+    font-size:10pt !important;
+    font-weight:700 !important;
+    font-style:normal !important;
+    color:#000 !important;
+    line-height:1.25 !important;
+    margin-bottom:2px !important;
+  }
+  /* CUERPO: normal/regular — declaración COMPLETA para impresión */
+  .lc-line {
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif !important;
+    font-size:7pt !important;
+    font-weight:400 !important;
+    font-style:normal !important;
+    color:#333 !important;
+    line-height:1.35 !important;
+  }
 }
 </style>
 </head>
@@ -880,16 +947,22 @@ function buildPackageFromPara(para, id, currentArea, currentMaterial, currentCol
   const prj = (projectOvr || '').toUpperCase();
 
   const lines = [];
-  // Línea 1: cantidad + nombre — si es muy largo, dividir en sublíneas
+  // TÍTULO: cantidad + nombre — dividir si es largo (máx 28 chars por sublínea)
   const titleFull = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
-  splitLongLine(titleFull, 32).forEach(l => lines.push(l));
-  const d = normalizeFractions(dims);
-  if (d) splitLongLine(d.toUpperCase(), 35).forEach(l => lines.push(l));
-  if (mat) lines.push(mat.substring(0, 35));
-  const loc = [prj, ubi].filter(Boolean);
-  if (loc.length) lines.push(loc.join(' \u2014 ').substring(0, 35));
+  splitLongLine(titleFull, 28).forEach(l => lines.push(l));
 
-  // Máximo 5 líneas para que no se desborde la etiqueta
+  // DIMENSIONES — dividir si es larga
+  const d = normalizeFractions(dims);
+  if (d) splitLongLine(d.toUpperCase(), 30).forEach(l => lines.push(l));
+
+  // MATERIAL — una sola línea, recortar
+  if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));
+
+  // UBICACIÓN/PROYECTO — una sola línea, recortar
+  const loc = [prj, ubi].filter(Boolean);
+  if (loc.length) splitLongLine(loc.join(' \u2014 '), 30).forEach(l => lines.push(l));
+
+  // Máximo 5 líneas para que no desborde la etiqueta física
   return { id, lines: lines.slice(0, 5), areaColor: currentColor, isManual: false };
 }
 
@@ -1315,12 +1388,12 @@ function parseDocxParagraphs(paragraphs, areaOvr, projectOvr, materialOvr) {
     const lines=[];
     // Línea 1: cantidad + nombre — dividir si es muy largo
     const titleFull2 = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
-    splitLongLine(titleFull2, 32).forEach(l => lines.push(l));
+    splitLongLine(titleFull2, 28).forEach(l => lines.push(l));
     const d=normalizeFractions(dims);
-    if (d) splitLongLine(d.toUpperCase(), 35).forEach(l => lines.push(l));
-    if (mat) lines.push(mat.substring(0,35));
+    if (d) splitLongLine(d.toUpperCase(), 30).forEach(l => lines.push(l));
+    if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));
     const loc=[prj,ubi].filter(Boolean);
-    if (loc.length) lines.push(loc.join(' \u2014 ').substring(0,35));
+    if (loc.length) splitLongLine(loc.join(' \u2014 '), 30).forEach(l => lines.push(l));
 
     results.push({id, lines: lines.slice(0,5), areaColor, isManual:false});
     id++;
@@ -1493,7 +1566,8 @@ function refreshManualPreview() {
   const lines=getManualLines();
   const card=document.getElementById('manualPreviewCard');
   let html='';
-  lines.slice(0,6).forEach((line,i)=>{
+  lines.slice(0,5).forEach((line,i)=>{
+    if (i===1) html+=`<div style="width:60%;height:1px;background:#ddd;margin:1px auto 2px;flex-shrink:0;"></div>`;
     html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`;
   });
   card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
@@ -1663,7 +1737,10 @@ function createLabelCard(pkg,clickable=false) {
   el.className='label-card';
   let html='<span class="lc-edit-hint">✏️ editar</span>';
   if (pkg.areaColor) html+=`<div class="lc-bar" style="background:${pkg.areaColor};"></div>`;
-  (pkg.lines||[]).slice(0,6).forEach((line,i)=>{
+  const lines=(pkg.lines||[]).slice(0,5);
+  lines.forEach((line,i)=>{
+    // Separador visual entre título (i=0) y cuerpo (i=1)
+    if (i===1) html+=`<div style="width:60%;height:1px;background:#ddd;margin:1px auto 2px;flex-shrink:0;"></div>`;
     html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`;
   });
   el.innerHTML=html;
@@ -1821,7 +1898,10 @@ function refreshModalPreview() {
   const lines=getEditLines();
   const card=document.getElementById('modalPreviewCard');
   let html='';
-  lines.slice(0,5).forEach((line,i)=>{ html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`; });
+  lines.slice(0,5).forEach((line,i)=>{
+    if (i===1) html+=`<div style="width:60%;height:1px;background:#ddd;margin:1px auto 2px;flex-shrink:0;"></div>`;
+    html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`;
+  });
   card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
 }
 function modalQtyChange(delta) {
