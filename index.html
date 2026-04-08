@@ -631,6 +631,18 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
     <div class="modal-preview-wrap"><div class="label-card" id="modalPreviewCard"></div></div>
     <div id="editLinesContainer"></div>
     <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="addEditLine()">+ Agregar línea</button>
+    <div class="divider" style="margin:14px 0 10px;"></div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);display:block;margin-bottom:8px;">🏷️ Cantidad de etiquetas para este ítem</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="pkg-qty-wrap" id="modalQtyWrap" style="border-radius:var(--radius-sm);">
+          <button class="pkg-qty-btn" id="modalQtyDec" tabindex="-1" onclick="modalQtyChange(-1)">−</button>
+          <input class="pkg-qty-inp" type="number" min="1" max="99" value="2" id="modalQtyInp" style="width:52px;" oninput="modalQtySyncStyle()" />
+          <button class="pkg-qty-btn" id="modalQtyInc" tabindex="-1" onclick="modalQtyChange(1)">+</button>
+        </div>
+        <span style="font-size:12px;color:var(--text-muted);">etiquetas para este ítem</span>
+      </div>
+    </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
       <button class="btn btn-ghost"   onclick="closeEditModal()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveEditModal()">💾 Guardar cambios</button>
@@ -868,14 +880,36 @@ function buildPackageFromPara(para, id, currentArea, currentMaterial, currentCol
   const prj = (projectOvr || '').toUpperCase();
 
   const lines = [];
-  lines.push(qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase());
+  // Línea 1: cantidad + nombre — si es muy largo, dividir en sublíneas
+  const titleFull = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
+  splitLongLine(titleFull, 32).forEach(l => lines.push(l));
   const d = normalizeFractions(dims);
-  if (d) lines.push(d.toUpperCase());
-  if (mat) lines.push(mat);
+  if (d) splitLongLine(d.toUpperCase(), 35).forEach(l => lines.push(l));
+  if (mat) lines.push(mat.substring(0, 35));
   const loc = [prj, ubi].filter(Boolean);
-  if (loc.length) lines.push(loc.join(' \u2014 '));
+  if (loc.length) lines.push(loc.join(' \u2014 ').substring(0, 35));
 
-  return { id, lines, areaColor: currentColor, isManual: false };
+  // Máximo 5 líneas para que no se desborde la etiqueta
+  return { id, lines: lines.slice(0, 5), areaColor: currentColor, isManual: false };
+}
+
+// ── Divide texto largo en sublíneas de máx N caracteres ──────
+function splitLongLine(text, maxChars) {
+  if (!text || text.length <= maxChars) return [text];
+  const words = text.split(' ');
+  const result = [];
+  let current = '';
+  for (const word of words) {
+    if (!current) { current = word; continue; }
+    if ((current + ' ' + word).length <= maxChars) {
+      current += ' ' + word;
+    } else {
+      result.push(current);
+      current = word;
+    }
+  }
+  if (current) result.push(current);
+  return result.length ? result : [text.substring(0, maxChars)];
 }
 
 function saveAreaMap() { localStorage.setItem('etiquetas_areamap', JSON.stringify(areaMap)); }
@@ -1279,16 +1313,16 @@ function parseDocxParagraphs(paragraphs, areaOvr, projectOvr, materialOvr) {
 
     // ── Build label lines ─────────────────────────────────────
     const lines=[];
-    // Línea 1: cantidad + nombre
-    const nombreNorm = normalizeFractions(nombre).toUpperCase();
-    lines.push(qty + ' \u2014 ' + nombreNorm);   // "1 — 30 BASE"
+    // Línea 1: cantidad + nombre — dividir si es muy largo
+    const titleFull2 = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
+    splitLongLine(titleFull2, 32).forEach(l => lines.push(l));
     const d=normalizeFractions(dims);
-    if (d) lines.push(d.toUpperCase());
-    if (mat) lines.push(mat);
+    if (d) splitLongLine(d.toUpperCase(), 35).forEach(l => lines.push(l));
+    if (mat) lines.push(mat.substring(0,35));
     const loc=[prj,ubi].filter(Boolean);
-    if (loc.length) lines.push(loc.join(' \u2014 '));
+    if (loc.length) lines.push(loc.join(' \u2014 ').substring(0,35));
 
-    results.push({id, lines, areaColor, isManual:false});
+    results.push({id, lines: lines.slice(0,5), areaColor, isManual:false});
     id++;
   }
 
@@ -1750,6 +1784,11 @@ function openEditModal(pkgId,event) {
   editingPkgId=pkgId;
   renderEditLines(pkg.lines);
   refreshModalPreview();
+  // Load current qty for this pkg
+  const currentQty = pkg.labelsOverride ?? labelsCfg.labelsPerPkg;
+  const inp = document.getElementById('modalQtyInp');
+  inp.value = currentQty;
+  modalQtySyncStyle();
   document.getElementById('editModal').classList.add('open');
 }
 function closeEditModal() { document.getElementById('editModal').classList.remove('open'); editingPkgId=null; }
@@ -1782,8 +1821,20 @@ function refreshModalPreview() {
   const lines=getEditLines();
   const card=document.getElementById('modalPreviewCard');
   let html='';
-  lines.slice(0,6).forEach((line,i)=>{ html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`; });
+  lines.slice(0,5).forEach((line,i)=>{ html+=`<div class="${i===0?'lc-line0':'lc-line'}">${escHtml(line)}</div>`; });
   card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
+}
+function modalQtyChange(delta) {
+  const inp=document.getElementById('modalQtyInp');
+  inp.value=Math.max(1,Math.min(99,(parseInt(inp.value)||1)+delta));
+  modalQtySyncStyle();
+}
+function modalQtySyncStyle() {
+  const inp=document.getElementById('modalQtyInp');
+  const wrap=document.getElementById('modalQtyWrap');
+  const v=parseInt(inp.value)||1;
+  const isCustom = v !== labelsCfg.labelsPerPkg;
+  wrap.classList.toggle('pkg-qty-custom', isCustom);
 }
 function saveEditModal() {
   if (!editingPkgId) return;
@@ -1792,7 +1843,10 @@ function saveEditModal() {
   const pkg=getAllPackages().find(p=>p.id===editingPkgId);
   if (pkg) {
     pkg.lines=lines;
-    renderPackagesList(); renderPreview(); renderManualQueue();
+    // Save quantity from modal
+    const newQty=Math.max(1,Math.min(99,parseInt(document.getElementById('modalQtyInp').value)||1));
+    pkg.labelsOverride=newQty;
+    renderPackagesList(); renderPreview(); renderManualQueue(); updateStats();
     toast('✅ Etiqueta actualizada','success');
     switchTab('preview',document.querySelectorAll('.tab-btn')[1]);
   }
