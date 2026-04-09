@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Etiquetas — INTERIORS v11</title>
+<title>Generador de Etiquetas — INTERIORS v14</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -311,6 +311,30 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
 .er-ins-mat { background:rgba(245,158,11,0.12); border-color:#f59e0b; color:#f59e0b; }
 .er-ins-mat:hover { background:#f59e0b; color:#000; }
 
+/* RENDER TAB */
+#tsplCanvas { border-radius:4px; cursor:crosshair; }
+#renderMetrics { margin-top:10px; }
+#renderMetrics span { background:var(--bg-elevated); border:1px solid var(--border); border-radius:4px; padding:3px 10px; }
+#renderMetrics strong { color:var(--accent); }
+
+/* SEMANTIC FIELD ROWS */
+.field-row { display:grid; grid-template-columns:28px 110px 1fr; gap:6px; align-items:center; margin-bottom:8px; }
+.field-icon { font-size:14px; text-align:center; flex-shrink:0; }
+.field-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; }
+.field-row.field-title .field-label { color:var(--accent); }
+
+/* BOLD TOGGLE PILL */
+.bold-toggle { display:inline-flex; align-items:center; gap:0; border:1px solid var(--border); border-radius:20px; overflow:hidden; background:var(--bg-elevated); flex-shrink:0; }
+.bold-toggle input[type="radio"] { display:none; }
+.bold-toggle label { padding:4px 12px; font-size:11px; cursor:pointer; transition:all 0.15s; color:var(--text-muted); user-select:none; }
+.bold-toggle input[type="radio"]:checked + label { background:var(--accent); color:#fff; font-weight:700; }
+.bold-toggle.bt-body input[type="radio"]:checked + label { background:var(--green); }
+
+/* LABEL CARD lines — bold variants */
+.lc-line0.bold  { font-weight:800 !important; }
+.lc-line0.light { font-weight:500 !important; }
+.lc-line.bold   { font-weight:700 !important; color:#222 !important; }
+
 @media print {
   body { background:#fff !important; }
   .module-header,.main-grid>div:first-child,.tabs,.bulk-bar,.divider,button,.btn,.filter-row,
@@ -340,7 +364,7 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
       <div class="module-icon">🏷️</div>
       <div>
         <h1>Generador de Etiquetas</h1>
-        <p>v11 · Editor de colores por sección · Generar en dos pasos</p>
+        <p>v14 · 5 líneas semánticas · Negrita configurable · Manual rediseñado</p>
       </div>
     </div>
     <div class="header-stats">
@@ -400,15 +424,15 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
           <div class="form-row-3">
             <div class="form-group">
               <label>Ancho (mm)</label>
-              <input type="number" class="form-control" id="cfgLabelW" value="50" min="10" max="200" />
+              <input type="number" class="form-control" id="cfgLabelW" value="50" min="10" max="200" onchange="onConfigChange()" />
             </div>
             <div class="form-group">
               <label>Alto (mm)</label>
-              <input type="number" class="form-control" id="cfgLabelH" value="25" min="5" max="200" />
+              <input type="number" class="form-control" id="cfgLabelH" value="25" min="5" max="200" onchange="onConfigChange()" />
             </div>
             <div class="form-group">
               <label>Sep. col (mm)</label>
-              <input type="number" class="form-control" id="cfgColGap" value="0" min="0" max="10" step="0.5" />
+              <input type="number" class="form-control" id="cfgColGap" value="0" min="0" max="10" step="0.5" onchange="onConfigChange()" />
             </div>
           </div>
           <div class="form-row">
@@ -421,6 +445,48 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
               <select class="form-control" id="dpiSelect">
                 <option value="203" selected>203 DPI</option>
                 <option value="300">300 DPI</option>
+              </select>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <span class="section-label">Estilo de texto en etiqueta</span>
+          <div class="form-row" style="align-items:center;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Título (Línea 1)</label>
+              <div class="bold-toggle bt-title">
+                <input type="radio" name="titleWeight" id="twBold"   value="bold"   checked onchange="onConfigChange()">
+                <label for="twBold">N <strong>Bold</strong></label>
+                <input type="radio" name="titleWeight" id="twNormal" value="normal"        onchange="onConfigChange()">
+                <label for="twNormal">Normal</label>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Cuerpo (Líneas 2-5)</label>
+              <div class="bold-toggle bt-body">
+                <input type="radio" name="bodyWeight" id="bwNormal" value="normal" checked onchange="onConfigChange()">
+                <label for="bwNormal">Normal</label>
+                <input type="radio" name="bodyWeight" id="bwBold"   value="bold"          onchange="onConfigChange()">
+                <label for="bwBold">N <strong>Bold</strong></label>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <span class="section-label">Fuentes TSC (bitmap internas)</span>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fuente Título</label>
+              <select class="form-control" id="cfgFontTitle" onchange="onConfigChange()">
+                <option value="2">2 · 12×20 dots (mediana)</option>
+                <option value="3" selected>3 · 16×24 dots (grande ✓)</option>
+                <option value="4">4 · 24×32 dots (muy grande)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fuente Cuerpo</label>
+              <select class="form-control" id="cfgFontBody" onchange="onConfigChange()">
+                <option value="1" selected>1 · 8×12 dots (pequeña ✓)</option>
+                <option value="2">2 · 12×20 dots (mediana)</option>
+                <option value="3">3 · 16×24 dots (grande)</option>
               </select>
             </div>
           </div>
@@ -487,6 +553,7 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
         <div class="tabs">
           <button class="tab-btn active" onclick="switchTab('packages',this)">📦 Paquetes</button>
           <button class="tab-btn"        onclick="switchTab('preview',this)">🏷️ Vista Previa</button>
+          <button class="tab-btn"        onclick="switchTab('render',this)" id="tabRenderBtn">📐 Render TSPL</button>
           <button class="tab-btn"        onclick="switchTab('textentry',this)">📝 Por Texto</button>
           <button class="tab-btn"        onclick="switchTab('manual',this)">✏️ Manual</button>
           <button class="tab-btn"        onclick="switchTab('history',this)">📋 Historial</button>
@@ -514,6 +581,7 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
             <div class="divider"></div>
             <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm" onclick="printBrowserFallback()">🖨️ Imprimir por navegador</button>
+              <button class="btn btn-ghost btn-sm" onclick="previewTspl()" title="Ver el código TSPL generado">🔍 Ver TSPL</button>
               <button class="btn btn-success" onclick="printSelected()">📡 Enviar a Impresora USB</button>
             </div>
           </div>
@@ -533,6 +601,7 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
               </div>
               <div style="display:flex;gap:8px;">
                 <button class="btn btn-ghost btn-sm"   onclick="printBrowserFallback()">🖨️ Imprimir</button>
+                <button class="btn btn-ghost btn-sm"   onclick="previewTspl()" title="Ver TSPL generado">🔍 TSPL</button>
                 <button class="btn btn-success btn-sm" onclick="printSelected()">📡 Enviar USB</button>
               </div>
             </div>
@@ -543,7 +612,39 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
           </div>
         </div>
 
-        <!-- TEXT ENTRY TAB -->
+        <!-- RENDER TSPL TAB -->
+        <div class="tab-panel" id="tab-render">
+          <div id="renderEmpty" class="empty-state">
+            <div class="empty-icon">📐</div>
+            <p>Selecciona paquetes y haz clic en <strong>Renderizar</strong> para ver la simulación exacta de la etiqueta térmica</p>
+          </div>
+          <div id="renderContent">
+            <!-- controles -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+              <div>
+                <p style="font-size:13px;font-weight:600;">🖨️ Simulación fiel — coordenadas TSPL en canvas</p>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:2px;">Mismo layout que imprimirá la TSC TE200 · Escala real en mm</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-ghost btn-sm" onclick="renderPrev()">◀</button>
+                <span id="renderPageInfo" style="font-size:12px;color:var(--text-secondary);align-self:center;min-width:80px;text-align:center;">— / —</span>
+                <button class="btn btn-ghost btn-sm" onclick="renderNext()">▶</button>
+                <button class="btn btn-primary btn-sm" onclick="renderAll()">🔄 Renderizar</button>
+                <button class="btn btn-success btn-sm" onclick="printSelected()">📡 Enviar USB</button>
+              </div>
+            </div>
+            <!-- overflow alert -->
+            <div id="renderOverflowAlert" style="display:none;background:rgba(239,68,68,0.12);border:1px solid #ef4444;border-radius:6px;padding:10px 14px;font-size:12px;color:#ef4444;margin-bottom:10px;">
+              ⚠️ <strong>Overflow detectado:</strong> el contenido supera la altura de la etiqueta. <span id="renderOverflowMsg"></span>
+            </div>
+            <!-- canvas wrapper -->
+            <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;justify-content:center;align-items:flex-start;min-height:160px;">
+              <canvas id="tsplCanvas" style="display:block;image-rendering:pixelated;max-width:100%;border-radius:4px;"></canvas>
+            </div>
+            <!-- metrics bar -->
+            <div id="renderMetrics" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--text-muted);padding:0 2px;"></div>
+          </div>
+        </div>
         <div class="tab-panel" id="tab-textentry">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
 
@@ -555,14 +656,13 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
               </p>
 
               <div class="info-box" style="margin-bottom:12px;">
-                <strong>Formato por línea:</strong><br>
-                <code style="font-size:11px;">NOMBRE</code><br>
-                <code style="font-size:11px;">NOMBRE | DIMENSIÓN</code><br>
-                <code style="font-size:11px;">NOMBRE | DIMENSIÓN | MATERIAL | UBICACIÓN</code>
+                <strong>Formato de 5 campos separados por |</strong><br>
+                <code style="font-size:11px;">Cant+Nombre | Medidas | Color/Mat | Proyecto | Área</code><br>
+                <span style="font-size:10px;color:var(--text-muted);">Los campos vacíos quedan en blanco en la etiqueta</span>
               </div>
 
               <textarea class="text-entry-area" id="textEntryInput"
-                placeholder="Puerta principal&#10;Ventana cocina | 100x210 cm&#10;Closet Dorm 1 | 240x60 cm | Blanco 5/8 | Dorm 1&#10;Panel lateral | 90x200 cm"
+                placeholder="2 PUERTAS ER+C4S | 28 7/8 X 11 1/2 | ROBLE AURORA 5/8 | ZORZALES DE MERENDON | APTO 601&#10;1 CLOSET | 240 X 60 | BLANCO 5/8 | CASA GARCIA | DORM 1&#10;3 CAJONES | 30 X 15 | MDF NATURAL | PROYECTO X | COCINA"
                 oninput="refreshTextPreview()"></textarea>
               <div class="text-line-count" id="textLineCount">0 líneas detectadas</div>
 
@@ -604,10 +704,36 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
             <!-- Builder panel -->
             <div>
               <p style="font-size:13px;font-weight:700;margin-bottom:4px;">✏️ Crear Etiqueta Manual</p>
-              <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">Escribe las líneas. Se agrega al lote y aparece en Vista Previa e impresión.</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">5 líneas semánticas fijas · se agrega al lote al hacer clic en Agregar.</p>
 
-              <div class="manual-line-list" id="manualLineList"></div>
-              <button class="btn btn-ghost btn-sm" style="margin-bottom:14px;" onclick="addManualLine()">+ Línea</button>
+              <!-- 5 semantic fields -->
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;" id="manualSemanticFields">
+                <div class="field-row field-title">
+                  <span class="field-icon">🔢</span>
+                  <span class="field-label">Cant. + Nombre</span>
+                  <input type="text" class="form-control" id="mf0" placeholder="Ej: 2 PUERTAS ER+C4S" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">📏</span>
+                  <span class="field-label">Medidas</span>
+                  <input type="text" class="form-control" id="mf1" placeholder="Ej: 28 7/8 X 11 1/2" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">🎨</span>
+                  <span class="field-label">Color / Material</span>
+                  <input type="text" class="form-control" id="mf2" placeholder="Ej: ROBLE AURORA 5/8" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">🏗️</span>
+                  <span class="field-label">Proyecto</span>
+                  <input type="text" class="form-control" id="mf3" placeholder="Ej: ZORZALES DE MERENDON" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">📍</span>
+                  <span class="field-label">Área</span>
+                  <input type="text" class="form-control" id="mf4" placeholder="Ej: APTO 601 JG-FL" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+              </div>
 
               <div class="manual-preview-wrap">
                 <div class="label-card" id="manualPreviewCard">
@@ -678,8 +804,35 @@ body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter'
   <div class="modal-box">
     <div class="modal-title">✏️ Editar Etiqueta</div>
     <div class="modal-preview-wrap"><div class="label-card" id="modalPreviewCard"></div></div>
-    <div id="editLinesContainer"></div>
-    <button class="btn btn-ghost btn-sm" style="margin-top:4px;" onclick="addEditLine()">+ Agregar línea</button>
+
+    <!-- 5 semantic fields -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
+      <div class="field-row field-title">
+        <span class="field-icon">🔢</span>
+        <span class="field-label">Cant.+Nombre</span>
+        <input type="text" class="form-control" id="ef0" placeholder="Ej: 2 PUERTAS ER+C4S" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">📏</span>
+        <span class="field-label">Medidas</span>
+        <input type="text" class="form-control" id="ef1" placeholder="Ej: 28 7/8 X 11 1/2" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">🎨</span>
+        <span class="field-label">Color/Material</span>
+        <input type="text" class="form-control" id="ef2" placeholder="Ej: ROBLE AURORA 5/8" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">🏗️</span>
+        <span class="field-label">Proyecto</span>
+        <input type="text" class="form-control" id="ef3" placeholder="Ej: ZORZALES DE MERENDON" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">📍</span>
+        <span class="field-label">Área</span>
+        <input type="text" class="form-control" id="ef4" placeholder="Ej: APTO 601 JG-FL" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+    </div>
     <div class="divider" style="margin:14px 0 10px;"></div>
     <div class="form-group" style="margin-bottom:0;">
       <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);display:block;margin-bottom:8px;">🏷️ Cantidad de etiquetas para este ítem</label>
@@ -1512,68 +1665,71 @@ function clearTextEntry() {
 }
 
 // ═══════════════════════════════════════════════
-//  MANUAL LABEL BUILDER
+//  LABEL FIELD DEFINITIONS (5 slots semánticos)
+// ═══════════════════════════════════════════════
+const LABEL_FIELDS = [
+  { icon:'🔢', label:'Cant. + Nombre',  placeholder:'2 PUERTAS ER+C4S'       },
+  { icon:'📏', label:'Medidas',          placeholder:'28 7/8 X 11 1/2'        },
+  { icon:'🎨', label:'Color / Material', placeholder:'ROBLE AURORA 5/8'       },
+  { icon:'🏗️', label:'Proyecto',         placeholder:'ZORZALES DE MERENDON'   },
+  { icon:'📍', label:'Área',             placeholder:'APTO 601 JG-FL'         },
+];
+
+// ═══════════════════════════════════════════════
+//  BOLD CONFIG HELPERS
+// ═══════════════════════════════════════════════
+function getTitleBold() {
+  return (document.querySelector('input[name="titleWeight"]:checked')?.value||'bold')==='bold';
+}
+function getBodyBold() {
+  return (document.querySelector('input[name="bodyWeight"]:checked')?.value||'normal')==='bold';
+}
+
+// ═══════════════════════════════════════════════
+//  MANUAL BUILDER — 5 campos semánticos fijos
 // ═══════════════════════════════════════════════
 function initManualBuilder() {
-  const list=document.getElementById('manualLineList');
-  list.innerHTML='';
-  ['','','',''].forEach(()=>addManualLine());
+  // Los inputs mf0-mf4 ya están en el HTML, solo refrescamos preview
+  ['mf0','mf1','mf2','mf3','mf4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshManualPreview);
+  });
   refreshManualPreview();
 }
 
-function addManualLine(value='') {
-  const list=document.getElementById('manualLineList');
-  const num=list.children.length+1;
-  const row=document.createElement('div');
-  row.className='manual-line-row';
-  row.innerHTML=`
-    <span class="manual-line-num">${num}</span>
-    <input type="text" class="form-control" placeholder="Línea ${num}..." style="font-size:12px;" />
-    <button class="manual-line-del" onclick="removeManualLine(this)">✕</button>
-  `;
-  row.querySelector('input').value=value;
-  row.querySelector('input').addEventListener('input',refreshManualPreview);
-  list.appendChild(row);
-  renumberManualLines();
-}
-function removeManualLine(btn) { btn.closest('.manual-line-row').remove(); renumberManualLines(); refreshManualPreview(); }
-function renumberManualLines() {
-  document.querySelectorAll('.manual-line-num').forEach((n,i)=>n.textContent=i+1);
-  document.querySelectorAll('#manualLineList input').forEach((inp,i)=>{ if(!inp.value) inp.placeholder=`Línea ${i+1}...`; });
-}
 function getManualLines() {
-  return [...document.querySelectorAll('#manualLineList input')].map(inp=>inp.value.trim()).filter(v=>v.length>0);
+  return ['mf0','mf1','mf2','mf3','mf4']
+    .map(id => (document.getElementById(id)?.value||'').trim().toUpperCase())
+    .map(v => v); // mantener slots vacíos para preservar posición semántica
 }
+
 function refreshManualPreview() {
-  const lines=getManualLines();
-  const card=document.getElementById('manualPreviewCard');
-  const FONT="Arial,Helvetica Neue,sans-serif";
-  const ST="font-family:"+FONT+";font-size:11px;font-weight:700;font-style:normal;line-height:1.3;color:#000;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-bottom:4px;";
-  const SB="font-family:"+FONT+";font-size:7.5px;font-weight:400;font-style:normal;line-height:1.5;color:#333;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-top:2px;";
-  const SS="width:55%;height:1px;background:#ccc;border:none;margin:3px auto 3px;display:block;";
-  let html='';
-  lines.slice(0,5).forEach((line,i)=>{
-    if (i===1) html+=`<hr style="${SS}" />`;
-    html+=`<div style="${i===0?ST:SB}">${escHtml(line)}</div>`;
-  });
-  card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
+  const lines = getManualLines();
+  const card  = document.getElementById('manualPreviewCard');
+  card.innerHTML = buildLabelCardHTML(lines);
 }
 
 function addManualLabel() {
-  const lines=getManualLines();
-  if (!lines.length) { toast('Agrega al menos una línea','error'); return; }
-  const qty   =parseInt(document.getElementById('manualQty').value)   ||2;
-  const copies=parseInt(document.getElementById('manualCopies').value)||1;
+  const lines = getManualLines();
+  const hasContent = lines.some(l => l.length > 0);
+  if (!hasContent) { toast('Completa al menos un campo','error'); return; }
+  const qty    = parseInt(document.getElementById('manualQty').value)||2;
+  const copies = parseInt(document.getElementById('manualCopies').value)||1;
   for (let c=0;c<copies;c++) {
     manualIdCtr++;
     manualPkgs.push({id:manualIdCtr, lines:[...lines], labelsOverride:qty, isManual:true});
     selectedIds.add(manualIdCtr);
   }
   renderManualQueue(); renderPackagesList(); renderPreview(); updateStats();
-  toast(`✅ ${copies===1?'Etiqueta':''+copies+' copias'} agregada(s) al lote`,'success');
-  document.querySelectorAll('#manualLineList input').forEach(inp=>inp.value='');
+  toast(`✅ ${copies===1?'Etiqueta añadida':copies+' copias'} al lote`,'success');
+  ['mf0','mf1','mf2','mf3','mf4'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   refreshManualPreview();
 }
+
+// Mantener addManualLine como no-op por si algo lo llama (legacy)
+function addManualLine(value='') {}
+function removeManualLine()       {}
+function renumberManualLines()    {}
 
 function renderManualQueue() {
   const qEl=document.getElementById('manualQueue');
@@ -1703,7 +1859,10 @@ function renderPreview() {
   roll.innerHTML='';
   if (!sel.length) {
     document.getElementById('previewEmpty').style.display  ='';
-    document.getElementById('previewContent').style.display='none'; return;
+    document.getElementById('previewContent').style.display='none';
+    renderQueue=[];
+    document.getElementById('renderPageInfo').textContent='— / —';
+    return;
   }
   document.getElementById('previewEmpty').style.display  ='none';
   document.getElementById('previewContent').style.display='';
@@ -1717,45 +1876,66 @@ function renderPreview() {
       roll.appendChild(rowEl);
     }
   });
+  // Si render tab activo, re-renderizar automáticamente
+  if (document.getElementById('tab-render').classList.contains('active')) {
+    renderQueue = sel;
+    if (renderIndex >= sel.length) renderIndex = 0;
+    renderFrame();
+  } else {
+    // Actualizar queue silenciosamente para cuando el usuario abra el tab
+    renderQueue = sel;
+    if (renderIndex >= sel.length) renderIndex = 0;
+  }
 }
-// Estilos inline base para cada tipo de línea — inmunes al override del navegador en print
-const STYLE_TITLE = [
-  'font-family:"Inter","Helvetica Neue",Arial,sans-serif',
-  'font-size:11px','font-weight:700','font-style:normal',
-  'line-height:1.3','color:#000','text-transform:uppercase',
-  'letter-spacing:0.4px','word-break:break-word',
-  'overflow-wrap:break-word','white-space:normal',
-  'width:100%','text-align:center','display:block',
-  'margin-bottom:3px'
-].join(';');
+// ═══════════════════════════════════════════════
+//  SHARED LABEL CARD HTML BUILDER
+//  Usa los toggles Bold para title y body
+// ═══════════════════════════════════════════════
+function buildLabelCardHTML(lines) {
+  const titleBold = getTitleBold();
+  const bodyBold  = getBodyBold();
+  const FONT = '"Inter","Helvetica Neue",Arial,sans-serif';
 
-const STYLE_BODY = [
-  'font-family:"Inter","Helvetica Neue",Arial,sans-serif',
-  'font-size:7.5px','font-weight:400','font-style:normal',
-  'line-height:1.5','color:#444','text-transform:uppercase',
-  'letter-spacing:0.2px','word-break:break-word',
-  'overflow-wrap:break-word','white-space:normal',
-  'width:100%','text-align:center','display:block',
-  'margin-top:2px'
-].join(';');
+  // Estilos inline para inmunidad al print override
+  const ST = [
+    `font-family:${FONT}`,
+    'font-size:11px',
+    `font-weight:${titleBold?'800':'500'}`,
+    'line-height:1.25','color:#000','text-transform:uppercase',
+    'letter-spacing:0.4px','word-break:break-word','overflow-wrap:break-word',
+    'white-space:normal','width:100%','text-align:center','display:block','margin-bottom:2px'
+  ].join(';');
 
-const STYLE_DIVIDER = [
-  'width:55%','height:1px','background:#ccc',
-  'margin:3px auto 4px','display:block','border:none',
-  'flex-shrink:0'
-].join(';');
+  const SB = [
+    `font-family:${FONT}`,
+    'font-size:7.5px',
+    `font-weight:${bodyBold?'700':'400'}`,
+    'line-height:1.4',`color:${bodyBold?'#222':'#444'}`,
+    'text-transform:uppercase','letter-spacing:0.2px',
+    'word-break:break-word','overflow-wrap:break-word',
+    'white-space:normal','width:100%','text-align:center','display:block','margin-top:1px'
+  ].join(';');
+
+  const SEP = 'width:55%;height:1px;background:#ccc;border:none;margin:3px auto 4px;display:block;';
+
+  // Filtrar slots vacíos para el display, pero siempre mostrar título aunque vacío
+  const display = lines.slice(0,5);
+  let html = '';
+  let sepDone = false;
+  display.forEach((line, i) => {
+    if (!line) return; // skip empty slots en la tarjeta
+    if (i > 0 && !sepDone) { html += `<hr style="${SEP}" />`; sepDone = true; }
+    html += `<span style="${i===0?ST:SB}">${escHtml(line)}</span>`;
+  });
+  return html || '<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
+}
 
 function createLabelCard(pkg,clickable=false) {
   const el=document.createElement('div');
   el.className='label-card';
   let html='<span class="lc-edit-hint">✏️ editar</span>';
   if (pkg.areaColor) html+=`<div class="lc-bar" style="background:${pkg.areaColor};"></div>`;
-  const lines=(pkg.lines||[]).slice(0,5);
-  lines.forEach((line,i)=>{
-    if (i===1) html+=`<hr style="${STYLE_DIVIDER}" />`;
-    const s = i===0 ? STYLE_TITLE : STYLE_BODY;
-    html+=`<span style="${s}">${escHtml(line)}</span>`;
-  });
+  html += buildLabelCardHTML(pkg.lines||[]);
   el.innerHTML=html;
   if (clickable) { el.title='Haz clic para editar'; el.addEventListener('click',()=>openEditModal(pkg.id)); }
   return el;
@@ -1770,6 +1950,10 @@ function readConfig() {
   labelsCfg.labelW_mm   =parseFloat(document.getElementById('cfgLabelW').value) ||50;
   labelsCfg.labelH_mm   =parseFloat(document.getElementById('cfgLabelH').value) ||25;
   labelsCfg.colGap_mm   =parseFloat(document.getElementById('cfgColGap').value) ||0;
+  labelsCfg.fontTitle   =document.getElementById('cfgFontTitle')?.value||'3';
+  labelsCfg.fontBody    =document.getElementById('cfgFontBody')?.value||'1';
+  labelsCfg.titleBold   =getTitleBold();
+  labelsCfg.bodyBold    =getBodyBold();
 }
 function generateTsplTwoUp(pkgList) {
   readConfig();
@@ -1777,10 +1961,14 @@ function generateTsplTwoUp(pkgList) {
   const lw=Math.round(labelsCfg.labelW_mm*dpm), lh=Math.round(labelsCfg.labelH_mm*dpm);
   const hgap=Math.round(labelsCfg.colGap_mm*dpm), vgap=Math.round(3*dpm);
   const rollW=lw*2+hgap;
-  let code=`; INTERIORS — Generador de Etiquetas v10 (2-UP)\n`;
-  code+=`; DPI:${dpi} | Label:${labelsCfg.labelW_mm}x${labelsCfg.labelH_mm}mm\n`;
+  let code=`; INTERIORS — Generador de Etiquetas v13 (2-UP)\n`;
+  code+=`; DPI:${dpi} | Label:${labelsCfg.labelW_mm}x${labelsCfg.labelH_mm}mm | Fuente titulo=3 cuerpo=1\n`;
   code+=`; ${new Date().toLocaleString('es-MX')}\n\n`;
-  code+=`SIZE ${rollW} dot, ${lh} dot\nGAP ${vgap} dot, 0\nDIRECTION 0\nREFERENCE 0,0\nOFFSET 0\nSET PEEL OFF\nSET CUTTER OFF\n\n`;
+  // SIZE en mm para máxima compatibilidad con TSC TE200
+  // GAP: separación entre etiquetas en el rollo (3mm por defecto)
+  const rollW_mm = labelsCfg.labelW_mm * 2 + labelsCfg.colGap_mm;
+  const gap_mm   = 3; // gap físico entre etiquetas del rollo
+  code+=`SIZE ${rollW_mm} mm, ${labelsCfg.labelH_mm} mm\nGAP ${gap_mm} mm, 0 mm\nDIRECTION 0\nREFERENCE 0,0\nOFFSET 0\nSET PEEL OFF\nSET CUTTER OFF\n\n`;
   pkgList.forEach((pkg,idx)=>{
     const qty=pkg.labelsOverride||labelsCfg.labelsPerPkg;
     code+=`; ─── ${idx+1}: ${(pkg.lines[0]||'').substring(0,30)} ───\nCLS\n`;
@@ -1796,26 +1984,36 @@ function buildLabelTspl(pkg,xOff,lw,lh,dpi,dpm) {
   const is300=(dpi===300);
 
   // ── Tabla de fuentes internas TSC ─────────────────────────────
+  // Métricas exactas bitmap @ 203dpi (doblar para 300dpi aprox):
+  //   id  cw   ch   descripción
+  //   "1"  8   12   la más pequeña — cuerpo ligero
+  //   "2" 12   20   mediana
+  //   "3" 16   24   grande — buen título
+  //   "4" 24   32   muy grande
+  //   "5" 32   48   máxima
+  const TSC_FONT_METRICS = {
+    '1': { cw: is300?12: 8, ch: is300?16:12 },
+    '2': { cw: is300?18:12, ch: is300?30:20 },
+    '3': { cw: is300?24:16, ch: is300?36:24 },
+    '4': { cw: is300?36:24, ch: is300?48:32 },
+    '5': { cw: is300?48:32, ch: is300?72:48 },
+  };
+  const titleFontId = labelsCfg.fontTitle || '3';
+  const bodyFontId  = labelsCfg.fontBody  || '1';
   const FONTS = {
-    title: {
-      id:  is300?'3':'3',         // fuente grande para título
-      cw:  is300?24:16,           // char width en dots
-      ch:  is300?36:24,           // char height en dots
-    },
-    body: {
-      id:  '2',                   // fuente media para cuerpo
-      cw:  is300?18:12,
-      ch:  is300?30:20,
-    }
+    title: { id: titleFontId, ...TSC_FONT_METRICS[titleFontId] },
+    body:  { id: bodyFontId,  ...TSC_FONT_METRICS[bodyFontId]  },
   };
 
-  // Margen interno por etiqueta (dots)
-  const marginX = Math.round(3*dpm);
-  const usableW = lw - marginX*2;
+  // Margen interno por etiqueta (dots) — 4mm para evitar sangrado en borde térmico
+  const marginX = Math.round(4 * dpm);
+  const usableW = lw - marginX * 2;
 
   // ── Calcular líneas con wrap por carácter disponible ──────────
+  // Margen de seguridad 10%: las fuentes bitmap TSC tienen spacing
+  // inter-carácter implícito que el cw fijo no refleja exactamente.
   function wrapLine(text, font) {
-    const maxChars = Math.floor(usableW / font.cw);
+    const maxChars = Math.floor((usableW * 0.90) / font.cw);
     if (text.length <= maxChars) return [text];
     const words = text.split(' ');
     const result = [];
@@ -1838,8 +2036,8 @@ function buildLabelTspl(pkg,xOff,lw,lh,dpi,dpm) {
   const finalLines = expanded.slice(0,6); // máximo 6 sublíneas en la etiqueta física
 
   // ── Calcular altura total y posición Y inicial centrada ───────
-  const titleH = FONTS.title.ch + 6;   // altura título + padding generoso
-  const bodyH  = FONTS.body.ch  + 7;   // altura cuerpo + padding (más espacio entre líneas)
+  const titleH = FONTS.title.ch + 8;   // altura título + padding generoso
+  const bodyH  = FONTS.body.ch  + 6;   // altura cuerpo + padding entre líneas
   const sepH   = 5;                     // separador visual entre título y cuerpo
 
   let totalH = 0;
@@ -1855,6 +2053,13 @@ function buildLabelTspl(pkg,xOff,lw,lh,dpi,dpm) {
   let y = Math.max(Math.round(2*dpm), Math.floor((lh - totalH) / 2));
   let c = '';
   let sepDrawn = false;
+  // Overflow: si el contenido calculado excede la altura física de la etiqueta
+  if (totalH > lh) {
+    c += `; ⚠️ OVERFLOW: contenido ${totalH}px > altura etiqueta ${lh}px — aumentar Alto en config\n`;
+    buildLabelTspl._lastOverflow = { totalH, lh, pkg: (pkg?.lines?.[0]||'') };
+  } else {
+    buildLabelTspl._lastOverflow = null;
+  }
 
   finalLines.forEach((l,i) => {
     const font = l.isTitle ? FONTS.title : FONTS.body;
@@ -1869,17 +2074,22 @@ function buildLabelTspl(pkg,xOff,lw,lh,dpi,dpm) {
       sepDrawn = true;
     }
 
-    // Centrar texto horizontalmente
+    // Centrar texto horizontalmente — clamp para evitar desbordamiento
     const textW = safe.length * font.cw;
-    const tx = xOff + marginX + Math.max(0, Math.floor((usableW - textW)/2));
+    const centerOffset = Math.max(0, Math.floor((usableW - textW) / 2));
+    const tx = xOff + marginX + centerOffset;
 
     if (l.isTitle) {
-      // Título: fuente media, multiplicador 1,1
+      // TÍTULO: fuente "3" (16×24 @ 203dpi) — grande, prominente
       c += `TEXT ${tx},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      // Simulación bold: doble impresión offset +1 dot en X
+      if (labelsCfg.titleBold) c += `TEXT ${tx+1},${y},"${font.id}",0,1,1,"${safe}"\n`;
       y += titleH;
     } else {
-      // Cuerpo: fuente pequeña, multiplicador 1,1 (fuente "1" ya es delgada)
+      // CUERPO: fuente "1" (8×12 @ 203dpi) — pequeña, contraste claro con título
       c += `TEXT ${tx},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      // Simulación bold en cuerpo si está activado
+      if (labelsCfg.bodyBold) c += `TEXT ${tx+1},${y},"${font.id}",0,1,1,"${safe}"\n`;
       y += bodyH;
     }
   });
@@ -1972,88 +2182,70 @@ ${labelRows}
 }
 
 function buildPrintLabelHTML(pkg) {
-  const lines = (pkg.lines || []).slice(0, 5);
+  const lines    = (pkg.lines || []).slice(0, 5);
+  const tBold    = getTitleBold();
+  const bBold    = getBodyBold();
   const colorBar = pkg.areaColor
     ? `<div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:${pkg.areaColor};border-radius:4px 0 0 4px;"></div>`
     : '';
-
   let content = '';
+  let sepDone = false;
   lines.forEach((line, i) => {
-    if (i === 1) {
+    if (!line) return;
+    if (i > 0 && !sepDone) {
       content += `<hr style="width:55%;height:1px;background:#bbb;border:none;margin:3px auto 4px;display:block;" />`;
+      sepDone = true;
     }
     if (i === 0) {
-      // TÍTULO: negrita, grande — todo inline, sin clases
-      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:10pt;font-weight:700;font-style:normal;color:#000;text-transform:uppercase;letter-spacing:0.4px;line-height:1.3;word-break:break-word;margin-bottom:2px;">${escHtml(line)}</span>`;
+      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:10pt;font-weight:${tBold?'800':'500'};color:#000;text-transform:uppercase;letter-spacing:0.4px;line-height:1.3;word-break:break-word;margin-bottom:2px;">${escHtml(line)}</span>`;
     } else {
-      // CUERPO: regular, pequeño — todo inline, sin clases
-      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:7pt;font-weight:400;font-style:normal;color:#333;text-transform:uppercase;letter-spacing:0.2px;line-height:1.45;word-break:break-word;margin-top:1px;">${escHtml(line)}</span>`;
+      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:7pt;font-weight:${bBold?'700':'400'};color:${bBold?'#111':'#333'};text-transform:uppercase;letter-spacing:0.2px;line-height:1.45;word-break:break-word;margin-top:1px;">${escHtml(line)}</span>`;
     }
   });
-
-  return `<div style="position:relative;background:#fff;border:1px solid #999;border-radius:5px;padding:6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70px;aspect-ratio:2/1;overflow:hidden;text-align:center;">
-    ${colorBar}${content}
-  </div>`;
+  return `<div style="position:relative;background:#fff;border:1px solid #999;border-radius:5px;padding:6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70px;aspect-ratio:2/1;overflow:hidden;text-align:center;">${colorBar}${content}</div>`;
 }
 
 // ═══════════════════════════════════════════════
-//  EDIT MODAL
+//  EDIT MODAL — 5 campos semánticos
 // ═══════════════════════════════════════════════
 let editingPkgId=null;
+
 function openEditModal(pkgId,event) {
   if (event) event.stopPropagation();
   const pkg=getAllPackages().find(p=>p.id===pkgId);
   if (!pkg) return;
   editingPkgId=pkgId;
-  renderEditLines(pkg.lines);
-  refreshModalPreview();
-  // Load current qty for this pkg
+  // Rellenar los 5 campos semánticos
+  const lines = pkg.lines || [];
+  ['ef0','ef1','ef2','ef3','ef4'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (el) el.value = lines[i]||'';
+  });
+  syncModalPreview();
   const currentQty = pkg.labelsOverride ?? labelsCfg.labelsPerPkg;
-  const inp = document.getElementById('modalQtyInp');
-  inp.value = currentQty;
+  document.getElementById('modalQtyInp').value = currentQty;
   modalQtySyncStyle();
   document.getElementById('editModal').classList.add('open');
 }
 function closeEditModal() { document.getElementById('editModal').classList.remove('open'); editingPkgId=null; }
-function getEditLines() { return [...document.querySelectorAll('.edit-line-input')].map(inp=>inp.value.trim()).filter(v=>v.length>0); }
-function renderEditLines(lines) { const c=document.getElementById('editLinesContainer'); c.innerHTML=''; lines.forEach(l=>addEditLineRow(l)); }
-function addEditLineRow(value='') {
-  const c=document.getElementById('editLinesContainer');
-  const num=c.children.length+1;
-  const row=document.createElement('div');
-  row.className='edit-line-row';
-  row.innerHTML=`
-    <span class="edit-line-num">${num}</span>
-    <input type="text" class="form-control edit-line-input" placeholder="Línea ${num}..." />
-    <button class="edit-line-del" onclick="removeEditLine(this)">✕</button>
-  `;
-  row.querySelector('.edit-line-input').value=value;
-  row.querySelector('.edit-line-input').addEventListener('input',refreshModalPreview);
-  c.appendChild(row);
+
+function getEditLines() {
+  // Devuelve array de 5 slots (incluyendo vacíos para preservar posición semántica)
+  return ['ef0','ef1','ef2','ef3','ef4'].map(id => (document.getElementById(id)?.value||'').trim().toUpperCase());
 }
-function addEditLine() {
-  addEditLineRow('');
-  document.querySelectorAll('.edit-line-num').forEach((n,i)=>n.textContent=i+1);
+
+function syncModalPreview() {
+  const lines = getEditLines();
+  document.getElementById('modalPreviewCard').innerHTML = buildLabelCardHTML(lines);
 }
-function removeEditLine(btn) {
-  btn.closest('.edit-line-row').remove();
-  document.querySelectorAll('.edit-line-num').forEach((n,i)=>n.textContent=i+1);
-  refreshModalPreview();
-}
-function refreshModalPreview() {
-  const lines=getEditLines();
-  const card=document.getElementById('modalPreviewCard');
-  const FONT="Arial,Helvetica Neue,sans-serif";
-  const ST="font-family:"+FONT+";font-size:11px;font-weight:700;font-style:normal;line-height:1.3;color:#000;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-bottom:4px;";
-  const SB="font-family:"+FONT+";font-size:7.5px;font-weight:400;font-style:normal;line-height:1.5;color:#333;text-transform:uppercase;word-break:break-word;overflow-wrap:break-word;white-space:normal;width:100%;text-align:center;margin-top:2px;";
-  const SS="width:55%;height:1px;background:#ccc;border:none;margin:3px auto 3px;display:block;";
-  let html='';
-  lines.slice(0,5).forEach((line,i)=>{
-    if (i===1) html+=`<hr style="${SS}" />`;
-    html+=`<div style="${i===0?ST:SB}">${escHtml(line)}</div>`;
-  });
-  card.innerHTML=html||'<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
-}
+
+// Legacy stubs para compatibilidad con código existente
+function renderEditLines()  {}
+function addEditLineRow()   {}
+function addEditLine()      {}
+function removeEditLine()   {}
+function refreshModalPreview() { syncModalPreview(); }
+
 function modalQtyChange(delta) {
   const inp=document.getElementById('modalQtyInp');
   inp.value=Math.max(1,Math.min(99,(parseInt(inp.value)||1)+delta));
@@ -2063,17 +2255,15 @@ function modalQtySyncStyle() {
   const inp=document.getElementById('modalQtyInp');
   const wrap=document.getElementById('modalQtyWrap');
   const v=parseInt(inp.value)||1;
-  const isCustom = v !== labelsCfg.labelsPerPkg;
-  wrap.classList.toggle('pkg-qty-custom', isCustom);
+  wrap.classList.toggle('pkg-qty-custom', v !== labelsCfg.labelsPerPkg);
 }
 function saveEditModal() {
   if (!editingPkgId) return;
   const lines=getEditLines();
-  if (!lines.length) { toast('Agrega al menos una línea','error'); return; }
+  if (!lines.some(l=>l.length>0)) { toast('Completa al menos un campo','error'); return; }
   const pkg=getAllPackages().find(p=>p.id===editingPkgId);
   if (pkg) {
     pkg.lines=lines;
-    // Save quantity from modal
     const newQty=Math.max(1,Math.min(99,parseInt(document.getElementById('modalQtyInp').value)||1));
     pkg.labelsOverride=newQty;
     renderPackagesList(); renderPreview(); renderManualQueue(); updateStats();
@@ -2158,6 +2348,15 @@ function switchTab(name,btn) {
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if (btn) btn.classList.add('active');
+  // Auto-render si se abre el tab de render y hay paquetes en cola
+  if (name==='render') {
+    const sel=getAllPackages().filter(p=>selectedIds.has(p.id));
+    if (sel.length) {
+      renderQueue=sel;
+      if(renderIndex>=sel.length) renderIndex=0;
+      renderFrame();
+    }
+  }
 }
 function showLoading(show,msg='') {
   document.getElementById('loadingBar').style.display=show?'':'none';
@@ -2173,6 +2372,220 @@ function toast(msg,type='info') {
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════
+//  TSPL CANVAS RENDERER (v13)
+//  Parsea los comandos TEXT y BAR generados y los
+//  dibuja en un <canvas> a escala real en mm.
+// ═══════════════════════════════════════════════
+
+// Métricas de fuente para canvas (px en canvas a 96dpi equivalente)
+// Mapeamos las fuentes TSC bitmap a tamaños de fuente de canvas
+// proporcionales, usando fuente monospace para máxima fidelidad.
+const CANVAS_FONT_PX = { '1':10, '2':14, '3':20, '4':28, '5':40 };
+
+let renderQueue   = [];  // array de paquetes a renderizar
+let renderIndex   = 0;   // índice actual en renderQueue
+
+function parseTsplCommands(tsplCode) {
+  // Devuelve array de objetos {type, ...props}
+  const cmds = [];
+  for (const raw of tsplCode.split('\n')) {
+    const line = raw.trim();
+    // TEXT x,y,"font",rotation,xmul,ymul,"text"
+    const tm = line.match(/^TEXT\s+(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]*)"/i);
+    if (tm) {
+      cmds.push({ type:'TEXT', x:+tm[1], y:+tm[2], font:tm[3], rot:+tm[4], xm:+tm[5], ym:+tm[6], text:tm[7] });
+      continue;
+    }
+    // BAR x,y,width,height
+    const bm = line.match(/^BAR\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (bm) {
+      cmds.push({ type:'BAR', x:+bm[1], y:+bm[2], w:+bm[3], h:+bm[4] });
+      continue;
+    }
+    // LINE x,y,x2,y2
+    const lm = line.match(/^LINE\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (lm) {
+      cmds.push({ type:'LINE', x1:+lm[1], y1:+lm[2], x2:+lm[3], y2:+lm[4] });
+    }
+  }
+  return cmds;
+}
+
+function drawLabelOnCanvas(canvas, pkg, dpi) {
+  readConfig();
+  const dpm    = dpi / 25.4;
+  const lw     = Math.round(labelsCfg.labelW_mm * dpm);
+  const lh     = Math.round(labelsCfg.labelH_mm * dpm);
+  const hgap   = Math.round(labelsCfg.colGap_mm * dpm);
+  const rollW  = lw * 2 + hgap;
+
+  // Escala para mostrar en pantalla: apuntamos a ~580px de ancho total
+  const targetW = Math.min(580, canvas.parentElement?.clientWidth - 32 || 560);
+  const scale   = targetW / rollW;
+
+  canvas.width  = Math.round(rollW * scale);
+  canvas.height = Math.round(lh    * scale);
+  canvas.style.width  = canvas.width  + 'px';
+  canvas.style.height = canvas.height + 'px';
+
+  const ctx = canvas.getContext('2d');
+
+  // Fondo blanco para la etiqueta
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Generar TSPL solo para este paquete (qty=1 para render)
+  const singlePkg = [{ ...pkg, labelsOverride: 1 }];
+  const tsplCode  = generateTsplTwoUp(singlePkg);
+  const cmds      = parseTsplCommands(tsplCode);
+
+  // Chequear overflow
+  const ov = buildLabelTspl._lastOverflow;
+  const overflowEl  = document.getElementById('renderOverflowAlert');
+  const overflowMsg = document.getElementById('renderOverflowMsg');
+  if (ov) {
+    overflowEl.style.display = '';
+    const needMm = Math.ceil(ov.totalH / dpm) + 2;
+    overflowMsg.textContent = `Necesita ≈${Math.ceil(ov.totalH/dpm)} mm, etiqueta es ${labelsCfg.labelH_mm} mm. Sube "Alto (mm)" a ${needMm}+`;
+  } else {
+    overflowEl.style.display = 'none';
+  }
+
+  // Borde de cada etiqueta (izq y der)
+  ctx.strokeStyle = '#cccccc';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(0.5,              0.5, Math.round(lw*scale)-1, Math.round(lh*scale)-1);
+  ctx.strokeRect(Math.round((lw+hgap)*scale)+0.5, 0.5, Math.round(lw*scale)-1, Math.round(lh*scale)-1);
+
+  // Línea separadora de columna (si hay gap)
+  if (hgap > 1) {
+    ctx.strokeStyle = '#444';
+    ctx.setLineDash([3,3]);
+    const midX = Math.round(lw * scale) + Math.round(hgap * scale / 2);
+    ctx.beginPath(); ctx.moveTo(midX,0); ctx.lineTo(midX, canvas.height); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Dibujar comandos
+  cmds.forEach(cmd => {
+    if (cmd.type === 'BAR') {
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(
+        Math.round(cmd.x * scale),
+        Math.round(cmd.y * scale),
+        Math.max(1, Math.round(cmd.w * scale)),
+        Math.max(1, Math.round(cmd.h * scale))
+      );
+    } else if (cmd.type === 'LINE') {
+      ctx.strokeStyle = '#111111';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(cmd.x1 * scale), Math.round(cmd.y1 * scale));
+      ctx.lineTo(Math.round(cmd.x2 * scale), Math.round(cmd.y2 * scale));
+      ctx.stroke();
+    } else if (cmd.type === 'TEXT') {
+      // Escalar la altura del carácter TSC en dots al espacio de canvas pixels
+      // TSC_ch_dots × scale = altura visual proporcional en canvas
+      const TSC_CH = {'1':12,'2':20,'3':24,'4':32,'5':48};
+      const chDots = (TSC_CH[cmd.font] || 12) * (dpi===300 ? 1.48 : 1);
+      const px     = Math.max(7, Math.round(chDots * scale * 0.85)); // 0.85 = factor ajuste visual
+      ctx.font         = `bold ${px}px 'Courier New', monospace`;
+      ctx.fillStyle    = '#000000';
+      ctx.textBaseline = 'top';
+      ctx.fillText(cmd.text, Math.round(cmd.x * scale), Math.round(cmd.y * scale));
+    }
+  });
+
+  // Overlay: mm rulers en los bordes
+  ctx.fillStyle = 'rgba(59,130,246,0.12)';
+  ctx.font = `${Math.max(8, Math.round(8*scale*2))}px Inter,Arial,sans-serif`;
+  ctx.fillStyle = 'rgba(100,120,200,0.7)';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${labelsCfg.labelW_mm}mm`, 2, canvas.height - 2);
+  ctx.fillText(`${labelsCfg.labelW_mm}mm`, Math.round((lw+hgap)*scale)+2, canvas.height - 2);
+}
+
+function renderAll() {
+  readConfig();
+  const sel = getAllPackages().filter(p => selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona paquetes primero','error'); return; }
+  renderQueue = sel;
+  renderIndex = 0;
+  renderFrame();
+  switchTab('render', document.getElementById('tabRenderBtn'));
+}
+
+function renderFrame() {
+  const canvas  = document.getElementById('tsplCanvas');
+  const emptyEl = document.getElementById('renderEmpty');
+  const pageEl  = document.getElementById('renderPageInfo');
+  const metEl   = document.getElementById('renderMetrics');
+
+  if (!renderQueue.length) {
+    emptyEl.style.display = '';
+    canvas.style.display  = 'none'; return;
+  }
+
+  emptyEl.style.display = 'none';
+  canvas.style.display  = 'block';
+
+  const pkg = renderQueue[renderIndex];
+  readConfig();
+  drawLabelOnCanvas(canvas, pkg, labelsCfg.dpi);
+
+  pageEl.textContent = `${renderIndex+1} / ${renderQueue.length}`;
+
+  // Métricas
+  const dpm = labelsCfg.dpi/25.4;
+  const lw  = Math.round(labelsCfg.labelW_mm*dpm);
+  const lh  = Math.round(labelsCfg.labelH_mm*dpm);
+  metEl.innerHTML = [
+    `<span>📐 Etiqueta: <strong>${labelsCfg.labelW_mm}×${labelsCfg.labelH_mm} mm</strong></span>`,
+    `<span>🔵 ${lw}×${lh} dots @ ${labelsCfg.dpi}dpi</span>`,
+    `<span>🔡 Título: fuente <strong>${labelsCfg.fontTitle||'3'}</strong> · Cuerpo: fuente <strong>${labelsCfg.fontBody||'1'}</strong></span>`,
+    `<span>📦 <strong>${escHtml(pkg.lines[0]||'—')}</strong></span>`,
+  ].join('');
+}
+
+function renderPrev() { if (renderIndex>0) { renderIndex--; renderFrame(); } }
+function renderNext() { if (renderIndex<renderQueue.length-1) { renderIndex++; renderFrame(); } }
+
+// Re-renderizar cuando cambia la config (si el tab render está activo)
+function onConfigChange() {
+  readConfig();
+  renderPreview(); // actualizar vista HTML también
+  if (document.getElementById('tab-render').classList.contains('active') && renderQueue.length) {
+    renderFrame();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TSPL DEBUG PREVIEW
+// ═══════════════════════════════════════════════
+function previewTspl() {
+  const sel = getAllPackages().filter(p => selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona al menos un paquete','error'); return; }
+  readConfig();
+  const code = generateTsplTwoUp(sel);
+  const win = window.open('', '_blank', 'width=860,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>TSPL Preview — INTERIORS v12</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0f1117; color:#e8ecf4; font-family:monospace; font-size:13px; padding:20px; }
+  h2 { font-size:15px; font-weight:700; color:#3b82f6; margin-bottom:12px; }
+  pre { background:#171b26; border:1px solid #2a3147; border-radius:8px; padding:16px; white-space:pre-wrap; word-break:break-all; line-height:1.7; overflow-y:auto; max-height:80vh; }
+  .note { font-size:12px; color:#8a93aa; margin-bottom:10px; line-height:1.6; }
+</style></head><body>
+<h2>🔍 Código TSPL generado — ${sel.length} paquete(s)</h2>
+<p class="note">Fuente título = "3" (16×24 dots @ 203dpi) · Fuente cuerpo = "1" (8×12 dots @ 203dpi)<br>
+SIZE en mm para compatibilidad TSC TE200 · 2 etiquetas por fila</p>
+<pre>${escHtml(code)}</pre>
+</body></html>`);
+  win.document.close();
 }
 
 // ═══════════════════════════════════════════════
