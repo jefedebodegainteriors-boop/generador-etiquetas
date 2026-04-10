@@ -1075,6 +1075,23 @@ function buildPackageFromPara(para, id, currentArea, currentMaterial, currentCol
     } else { nombre = cn; dims = cd; }
   } else { nombre = rest.trim(); dims = ''; }
 
+  // Si no hay dims explícitas, intentar pelar dimensiones pegadas al final del nombre.
+  // Patrón 1: después de cierre de paréntesis → "Pack (3 Plat/4 Rep.) 23 Prof."
+  // Patrón 2: último segmento que empieza con número + keyword de medida
+  if (!dims) {
+    const afterParen = nombre.match(/^(.+\))\s+(\d.+)$/);
+    if (afterParen) {
+      nombre = afterParen[1].trim();
+      dims   = afterParen[2].trim();
+    } else {
+      const trailingDim = nombre.match(/^(.+?)\s+(\d[\d\s\/¾½¼xX×]*(?:[Aa]lto|[Pp]rof\.?|[Aa]ncho|[Ff]ondo|[Pp]rof|cm|mm|pulg\.?).*)$/);
+      if (trailingDim) {
+        nombre = trailingDim[1].trim();
+        dims   = trailingDim[2].trim();
+      }
+    }
+  }
+
   if (!nombre || nombre.length < 2) return null;
 
   const mat = (currentMaterial || '').toUpperCase();
@@ -1082,20 +1099,22 @@ function buildPackageFromPara(para, id, currentArea, currentMaterial, currentCol
   const prj = (projectOvr || '').toUpperCase();
 
   const lines = [];
-  // TÍTULO: cantidad + nombre — dividir si es largo (máx 28 chars por sublínea)
+  // TÍTULO: cantidad + nombre — una sola línea (no partir mid-word el nombre)
+  // Se permite hasta 38 chars; si aun así desborda, splitLongLine respeta espacios.
   const titleFull = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
-  splitLongLine(titleFull, 28).forEach(l => lines.push(l));
+  splitLongLine(titleFull, 38).forEach(l => lines.push(l));
 
   // DIMENSIONES — dividir si es larga
   const d = normalizeFractions(dims);
-  if (d) splitLongLine(d.toUpperCase(), 30).forEach(l => lines.push(l));
+  if (d) splitLongLine(d.toUpperCase(), 32).forEach(l => lines.push(l));
 
   // MATERIAL — una sola línea, recortar
   if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));
 
-  // UBICACIÓN/PROYECTO — una sola línea, recortar
-  const loc = [prj, ubi].filter(Boolean);
-  if (loc.length) splitLongLine(loc.join(' \u2014 '), 30).forEach(l => lines.push(l));
+  // PROYECTO — línea separada
+  if (prj) splitLongLine(prj, 30).forEach(l => lines.push(l));
+  // ÁREA/UBICACIÓN — línea separada
+  if (ubi) splitLongLine(ubi, 30).forEach(l => lines.push(l));
 
   // Máximo 5 líneas para que no desborde la etiqueta física
   return { id, lines: lines.slice(0, 5), areaColor: currentColor, isManual: false };
