@@ -1064,32 +1064,47 @@ function buildPackageFromPara(para, id, currentArea, currentMaterial, currentCol
     }
   }
 
-  // Split NOMBRE – DIMS
-  let nombre = '', dims = '';
-  const ds = rest.match(/^(.+?)\s*[-–—]\s*(.+)$/s);
-  if (ds) {
-    const cn = ds[1].trim(), cd = ds[2].trim();
-    if (!startsWithDimension(cd) && isLocationText(cd)) {
-      nombre = cn; dims = '';
-      if (!inlineUbi) inlineUbi = cd;
-    } else { nombre = cn; dims = cd; }
-  } else { nombre = rest.trim(); dims = ''; }
+  // ── Segmentación: Fila 1 = qty+nombre | Fila 2 = refs/medidas | resto IGNORADO
+  //
+  // 3 formatos soportados:
+  //  A) "nombre – dims – ignorado"          guiones como separadores
+  //  B) "nombre (dims) – ignorado"          paréntesis pegado al nombre
+  //  C) "nombre dims"                       dimensión embebida sin guión
+  //     (sólo cuando nombre inicia con letra, ej: "Fondo 80x24", "Toe Kick 96x4")
 
-  // Si no hay dims explícitas, intentar pelar dimensiones pegadas al final del nombre.
-  // Patrón 1: después de cierre de paréntesis → "Pack (3 Plat/4 Rep.) 23 Prof."
-  // Patrón 2: último segmento que empieza con número + keyword de medida
-  if (!dims) {
-    const afterParen = nombre.match(/^(.+\))\s+(\d.+)$/);
-    if (afterParen) {
-      nombre = afterParen[1].trim();
-      dims   = afterParen[2].trim();
+  const allSegs = rest.split(/\s*[-–—]\s*/);   // todos los segmentos por guión
+  let nombre = allSegs[0].trim();
+  let dims   = '';
+
+  // Prioridad 1 — paréntesis al final del nombre  (Formato B)
+  // Ej: "27 Shelf Pack (2 Plat/2 Tubos)"  →  nombre="27 Shelf Pack", dims="(2 Plat/2 Tubos)"
+  const parenSuffix = nombre.match(/^(.+?)\s+(\([^)]+\))$/);
+  if (parenSuffix && parenSuffix[1].trim().length >= 2) {
+    nombre = parenSuffix[1].trim();
+    dims   = parenSuffix[2].trim();
+    // allSegs[1+] ignorados completamente
+
+  // Prioridad 2 — dimensión embebida sin guión  (Formato C)
+  // Sólo aplica cuando nombre empieza con letra (no con dígito),
+  // y contiene un bloque numérico después del nombre textual.
+  // Ej: "Fondo 80x24 Pantry", "Toe Kick 96x4", "Panel 30x20 Prof."
+  } else if (/^\D/.test(nombre)) {
+    const embDim = nombre.match(/^(\D.*?)\s+(\d.+)$/);
+    if (embDim && embDim[1].trim().length >= 1) {
+      nombre = embDim[1].trim();
+      dims   = embDim[2].trim();
+      // allSegs[1+] ignorados completamente
     } else {
-      const trailingDim = nombre.match(/^(.+?)\s+(\d[\d\s\/¾½¼xX×]*(?:[Aa]lto|[Pp]rof\.?|[Aa]ncho|[Ff]ondo|[Pp]rof|cm|mm|pulg\.?).*)$/);
-      if (trailingDim) {
-        nombre = trailingDim[1].trim();
-        dims   = trailingDim[2].trim();
-      }
+      // nombre no tiene dimensión embebida → usar allSegs[1] como Fila 2
+      dims = allSegs[1] ? allSegs[1].trim() : '';
+      // allSegs[2+] siempre ignorados
     }
+
+  } else {
+    // Formato A puro: nombre empieza con dígito (ej: "80 Pantry", "27 Shelf Pack")
+    // Fila 2 = segundo segmento del guión; el resto se ignora
+    dims = allSegs[1] ? allSegs[1].trim() : '';
+    // allSegs[2+] siempre ignorados
   }
 
   if (!nombre || nombre.length < 2) return null;
@@ -1515,16 +1530,31 @@ function parseDocxParagraphs(paragraphs, areaOvr, projectOvr, materialOvr) {
       }
     }
 
-    // ── Split NOMBRE – DIMS ───────────────────────────────────
+    // ── Segmentación: misma lógica que buildPackageFromPara ──────
+    // Fila 1=qty+nombre | Fila 2=refs/medidas | resto IGNORADO
     let nombre='', dims='';
-    const ds = rest.match(/^(.+?)\s*[-–—]\s*(.+)$/s);
-    if (ds) {
-      const cn=ds[1].trim(), cd=ds[2].trim();
-      if (!startsWithDimension(cd)&&isLocationText(cd)) {
-        nombre=cn; dims='';
-        if (!inlineUbi) inlineUbi=cd;
-      } else { nombre=cn; dims=cd; }
-    } else { nombre=rest.trim(); dims=''; }
+    const allSegs2 = rest.split(/\s*[-–—]\s*/);
+    nombre = allSegs2[0].trim();
+
+    // Prioridad 1: paréntesis al final  (Formato B)
+    const parenSuffix2 = nombre.match(/^(.+?)\s+(\([^)]+\))$/);
+    if (parenSuffix2 && parenSuffix2[1].trim().length >= 2) {
+      nombre = parenSuffix2[1].trim();
+      dims   = parenSuffix2[2].trim();
+    // Prioridad 2: dimensión embebida sin guión  (Formato C) — solo si nombre empieza con letra
+    } else if (/^\D/.test(nombre)) {
+      const embDim2 = nombre.match(/^(\D.*?)\s+(\d.+)$/);
+      if (embDim2 && embDim2[1].trim().length >= 1) {
+        nombre = embDim2[1].trim();
+        dims   = embDim2[2].trim();
+      } else {
+        dims = allSegs2[1] ? allSegs2[1].trim() : '';
+      }
+    } else {
+      // Formato A: nombre empieza con dígito → segundo segmento es Fila 2
+      dims = allSegs2[1] ? allSegs2[1].trim() : '';
+    }
+    // allSegs2[2+] siempre ignorados
 
     if (!nombre||nombre.length<2) continue;
 
@@ -1539,15 +1569,15 @@ function parseDocxParagraphs(paragraphs, areaOvr, projectOvr, materialOvr) {
     const areaColor = resolveAreaColor(currentArea) || resolveAreaColor(currentMaterial);
 
     // ── Build label lines ─────────────────────────────────────
+    // Orden fijo: F1=qty+nombre, F2=dims, F3=color(mat), F4=proyecto, F5=area
     const lines=[];
-    // Línea 1: cantidad + nombre — dividir si es muy largo
     const titleFull2 = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
     splitLongLine(titleFull2, 28).forEach(l => lines.push(l));
     const d=normalizeFractions(dims);
     if (d) splitLongLine(d.toUpperCase(), 30).forEach(l => lines.push(l));
-    if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));
-    const loc=[prj,ubi].filter(Boolean);
-    if (loc.length) splitLongLine(loc.join(' \u2014 '), 30).forEach(l => lines.push(l));
+    if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));   // Fila 3: color
+    if (prj) splitLongLine(prj, 30).forEach(l => lines.push(l));   // Fila 4: proyecto
+    if (ubi) splitLongLine(ubi, 30).forEach(l => lines.push(l));   // Fila 5: area
 
     results.push({id, lines: lines.slice(0,5), areaColor, isManual:false});
     id++;
