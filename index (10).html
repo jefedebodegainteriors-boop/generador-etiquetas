@@ -1,0 +1,2653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Etiquetas — INTERIORS v14</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root {
+  --bg-base:       #0f1117;
+  --bg-card:       #171b26;
+  --bg-elevated:   #1e2334;
+  --bg-hover:      #252b3b;
+  --border:        #2a3147;
+  --border-light:  #3a4460;
+  --accent:        #3b82f6;
+  --accent-glow:   rgba(59,130,246,0.18);
+  --green:         #22c55e;
+  --green-dim:     rgba(34,197,94,0.12);
+  --yellow:        #f59e0b;
+  --yellow-dim:    rgba(245,158,11,0.12);
+  --red:           #ef4444;
+  --red-dim:       rgba(239,68,68,0.12);
+  --purple:        #a855f7;
+  --purple-dim:    rgba(168,85,247,0.12);
+  --text-primary:  #e8ecf4;
+  --text-secondary:#8a93aa;
+  --text-muted:    #525d75;
+  --radius:        10px;
+  --radius-sm:     6px;
+  --shadow:        0 4px 24px rgba(0,0,0,0.4);
+  --shadow-sm:     0 2px 8px rgba(0,0,0,0.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter','Segoe UI',system-ui,sans-serif; font-size:14px; line-height:1.5; min-height:100vh; }
+
+.module { max-width:1400px; margin:0 auto; padding:24px; display:flex; flex-direction:column; gap:20px; }
+
+/* HEADER */
+.module-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+.module-title  { display:flex; align-items:center; gap:12px; }
+.module-icon   { width:42px; height:42px; background:var(--accent-glow); border:1px solid var(--accent); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-size:20px; }
+.module-title h1 { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
+.module-title p  { font-size:12px; color:var(--text-muted); margin-top:1px; }
+.header-stats { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.stat-chip { background:var(--bg-card); border:1px solid var(--border); border-radius:20px; padding:5px 14px; font-size:12px; display:flex; align-items:center; gap:6px; }
+.stat-chip .val { font-weight:700; color:var(--accent); }
+.printer-chip { display:flex; align-items:center; gap:8px; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid; transition:all 0.3s; }
+.printer-chip.ready     { background:var(--green-dim);  border-color:var(--green);  color:var(--green); }
+.printer-chip.error     { background:var(--red-dim);    border-color:var(--red);    color:var(--red); }
+.printer-chip.searching { background:var(--yellow-dim); border-color:var(--yellow); color:var(--yellow); }
+.printer-chip.no-webusb { background:var(--bg-elevated);border-color:var(--border); color:var(--text-muted); }
+.status-dot { width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.status-dot.pulse { animation:dotPulse 1.5s ease-in-out infinite; }
+@keyframes dotPulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+/* GRID */
+.main-grid { display:grid; grid-template-columns:390px 1fr; gap:20px; align-items:start; }
+@media (max-width:900px) { .main-grid { grid-template-columns:1fr; } }
+
+/* CARD */
+.card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.card-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.card-header h3 { font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.card-body { padding:18px; }
+
+/* UPLOAD ZONE */
+.upload-zone { border:2px dashed var(--border-light); border-radius:var(--radius); padding:28px 20px; text-align:center; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden; }
+.upload-zone:hover,.upload-zone.drag-over { border-color:var(--accent); background:var(--accent-glow); }
+.upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.upload-icon { font-size:32px; margin-bottom:8px; }
+.upload-zone p  { font-size:13px; color:var(--text-secondary); }
+.upload-zone span { font-size:11px; color:var(--text-muted); margin-top:4px; display:block; }
+.upload-zone.has-file  { border-color:var(--green); background:var(--green-dim); }
+.upload-zone.has-error { border-color:var(--red);   background:var(--red-dim); }
+
+/* AREA MAP */
+.area-map-list { display:flex; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; padding-right:2px; margin-bottom:10px; }
+.area-map-list::-webkit-scrollbar { width:4px; }
+.area-map-list::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:2px; }
+.area-row { display:grid; grid-template-columns:26px 1fr 1fr auto; gap:6px; align-items:center; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 8px; transition:border-color 0.15s; }
+.area-row:focus-within { border-color:var(--accent); }
+.area-row input[type="text"] { background:transparent; border:none; color:var(--text-primary); font-size:12px; padding:2px 4px; outline:none; width:100%; }
+.area-row input[type="text"]::placeholder { color:var(--text-muted); }
+.area-color { width:22px; height:22px; padding:0; border:2px solid var(--border-light); border-radius:5px; cursor:pointer; background:none; flex-shrink:0; }
+.area-color::-webkit-color-swatch-wrapper { padding:0; border-radius:3px; }
+.area-color::-webkit-color-swatch { border:none; border-radius:3px; }
+.area-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:13px; padding:2px 4px; border-radius:4px; transition:all 0.15s; flex-shrink:0; }
+.area-del:hover { color:var(--red); background:var(--red-dim); }
+.area-map-empty { text-align:center; padding:14px; color:var(--text-muted); font-size:12px; border:1px dashed var(--border); border-radius:var(--radius-sm); margin-bottom:10px; }
+/* label color bar */
+.lc-bar { position:absolute; left:0; top:0; bottom:0; width:5px; border-radius:5px 0 0 5px; }
+/* text entry */
+.text-entry-area { width:100%; min-height:170px; resize:vertical; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:13px; padding:10px 12px; outline:none; transition:border-color 0.2s; font-family:'Inter','Consolas',monospace; line-height:1.65; }
+.text-entry-area:focus { border-color:var(--accent); }
+.text-line-count { font-size:11px; color:var(--text-muted); margin-top:5px; }
+.text-preview-list { display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; margin-top:10px; padding-right:2px; }
+.text-preview-list::-webkit-scrollbar { width:4px; }
+.text-preview-list::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:2px; }
+.text-preview-item { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 10px; font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+.text-preview-item .tpi-num { font-size:10px; color:var(--text-muted); width:20px; text-align:right; flex-shrink:0; }
+.text-preview-item .tpi-text { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* FORM */
+.form-group { margin-bottom:14px; }
+.form-group label { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:6px; }
+.form-control { width:100%; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-size:13px; padding:8px 12px; outline:none; transition:border-color 0.2s; }
+.form-control:focus { border-color:var(--accent); }
+.form-row   { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:9px 18px; border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-primary:hover { background:#2563eb; transform:translateY(-1px); }
+.btn-success { background:var(--green);  color:#fff; }
+.btn-success:hover { background:#16a34a; transform:translateY(-1px); }
+.btn-purple  { background:var(--purple); color:#fff; }
+.btn-purple:hover  { background:#9333ea; transform:translateY(-1px); }
+.btn-ghost { background:var(--bg-elevated); color:var(--text-secondary); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--bg-hover); color:var(--text-primary); }
+.btn-sm  { padding:5px 12px; font-size:12px; }
+.btn-block { width:100%; }
+.btn:disabled { opacity:0.4; cursor:not-allowed; transform:none !important; }
+
+/* PACKAGES LIST */
+.items-list { display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; padding-right:4px; }
+.items-list::-webkit-scrollbar { width:4px; }
+.items-list::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:2px; }
+.pkg-item { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:10px 14px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.15s; }
+.pkg-item:hover    { border-color:var(--border-light); background:var(--bg-hover); }
+.pkg-item.selected { border-color:var(--accent); background:var(--accent-glow); }
+.pkg-item.manual   { border-color:var(--purple); }
+.pkg-item.manual.selected { background:var(--purple-dim); }
+.pkg-item input[type="checkbox"] { accent-color:var(--accent); width:15px; height:15px; cursor:pointer; }
+.pkg-badge { min-width:28px; height:28px; background:var(--accent-glow); border:1px solid var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--accent); flex-shrink:0; }
+.pkg-badge.manual-badge { background:var(--purple-dim); border-color:var(--purple); color:var(--purple); }
+.pkg-info { flex:1; min-width:0; }
+.pkg-name { font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pkg-meta { font-size:11px; color:var(--text-muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* QTY INLINE EDITOR */
+.pkg-qty-wrap { display:flex; align-items:center; gap:0; border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; flex-shrink:0; background:var(--bg-elevated); transition:border-color 0.15s; }
+.pkg-qty-wrap:focus-within, .pkg-qty-wrap:hover { border-color:var(--border-light); }
+.pkg-qty-wrap.pkg-qty-custom { border-color:var(--yellow); background:var(--yellow-dim); }
+.pkg-qty-wrap.pkg-qty-custom .pkg-qty-inp { color:var(--yellow); font-weight:700; }
+.pkg-qty-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; font-weight:700; padding:0 7px; line-height:28px; height:28px; transition:all 0.12s; user-select:none; }
+.pkg-qty-btn:hover { background:var(--bg-hover); color:var(--text-primary); }
+.pkg-qty-inp { width:36px; text-align:center; background:transparent; border:none; border-left:1px solid var(--border); border-right:1px solid var(--border); color:var(--text-primary); font-size:12px; font-weight:600; padding:0; height:28px; outline:none; -moz-appearance:textfield; }
+.pkg-qty-inp::-webkit-inner-spin-button, .pkg-qty-inp::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+.pkg-qty-lbl { font-size:12px; padding:0 6px; color:var(--text-muted); line-height:28px; }
+
+/* 2-UP PREVIEW */
+.preview-roll { display:flex; flex-direction:column; gap:6px; }
+.preview-row { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px 6px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); position:relative; }
+.preview-row::before { content:''; position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--border-light); transform:translateX(-50%); }
+
+/* ── LABEL CARD ─────────────────────────────────────────────── */
+.label-card {
+  width:100%; aspect-ratio:2/1; min-height:96px;
+  background:#fff; border-radius:6px; border:1px solid #ccc;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  overflow:hidden; box-shadow:var(--shadow-sm);
+  position:relative; color:#111; cursor:pointer;
+  transition:transform 0.15s,box-shadow 0.15s;
+  padding:6px 10px; text-align:center;
+  gap:3px; /* separación entre líneas */
+}
+.label-card:hover { transform:scale(1.02); box-shadow:0 6px 20px rgba(0,0,0,0.5); }
+.label-card .lc-edit-hint { position:absolute; top:3px; right:5px; font-size:9px; color:#aaa; opacity:0; transition:opacity 0.2s; }
+.label-card:hover .lc-edit-hint { opacity:1; }
+
+/* Línea 0 = TÍTULO (negrita, más grande) */
+.lc-line0 {
+  font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+  font-size:11px;
+  font-weight:700;
+  font-style:normal;
+  line-height:1.25;
+  color:#000;
+  text-transform:uppercase;
+  letter-spacing:0.4px;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  white-space:normal;
+  width:100%; max-width:100%;
+  margin-bottom:2px; /* separación extra título → cuerpo */
+}
+
+/* Líneas 1+ = CUERPO (normal, más pequeño, claramente diferente) */
+.lc-line {
+  font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+  font-size:7.5px;
+  font-weight:400;
+  font-style:normal;
+  line-height:1.35;
+  color:#444;
+  text-transform:uppercase;
+  letter-spacing:0.2px;
+  word-break:break-word;
+  overflow-wrap:break-word;
+  white-space:normal;
+  width:100%; max-width:100%;
+}
+
+/* MISC */
+.empty-state { text-align:center; padding:40px 20px; color:var(--text-muted); }
+.empty-state .empty-icon { font-size:40px; margin-bottom:10px; opacity:0.4; }
+.empty-state p { font-size:13px; }
+.loading-bar { height:3px; background:var(--border); border-radius:2px; overflow:hidden; margin:8px 0; }
+.loading-bar-inner { height:100%; background:var(--accent); border-radius:2px; animation:loadAnim 1.4s ease-in-out infinite; transform-origin:left; }
+@keyframes loadAnim { 0%{transform:translateX(-100%) scaleX(.3)} 50%{transform:translateX(0%) scaleX(.7)} 100%{transform:translateX(100%) scaleX(.3)} }
+.progress-row { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-secondary); }
+.history-table { width:100%; border-collapse:collapse; }
+.history-table th { padding:8px 12px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); border-bottom:1px solid var(--border); }
+.history-table td { padding:10px 12px; font-size:12px; border-bottom:1px solid var(--border); color:var(--text-secondary); }
+.history-table tr:last-child td { border-bottom:none; }
+.history-table tr:hover td { background:var(--bg-elevated); }
+.badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.badge-blue   { background:var(--accent-glow); color:var(--accent); }
+.badge-green  { background:var(--green-dim);   color:var(--green); }
+.badge-red    { background:var(--red-dim);     color:var(--red); }
+.badge-purple { background:var(--purple-dim);  color:var(--purple); }
+.tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); padding:0 18px; flex-wrap:wrap; }
+.tab-btn { padding:10px 16px; font-size:12px; font-weight:600; color:var(--text-muted); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; }
+.tab-btn:hover  { color:var(--text-secondary); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-panel { display:none; padding:18px; }
+.tab-panel.active { display:block; }
+.toast { position:fixed; bottom:24px; right:24px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 18px; font-size:13px; color:var(--text-primary); box-shadow:var(--shadow); z-index:2000; display:flex; align-items:center; gap:8px; transform:translateY(80px); opacity:0; transition:all 0.3s; max-width:380px; }
+.toast.show    { transform:translateY(0); opacity:1; }
+.toast.success { border-left:3px solid var(--green); }
+.toast.error   { border-left:3px solid var(--red); }
+.toast.info    { border-left:3px solid var(--accent); }
+.toast.warning { border-left:3px solid var(--yellow); }
+.divider { height:1px; background:var(--border); margin:14px 0; }
+.bulk-bar { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; background:var(--bg-elevated); border-radius:var(--radius-sm); margin-bottom:10px; font-size:12px; color:var(--text-secondary); }
+.filter-row { display:flex; gap:10px; flex-wrap:wrap; }
+.filter-row .form-control { flex:1; min-width:120px; }
+.printer-info-bar { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.printer-info-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.printer-info-dot.on    { background:var(--green); box-shadow:0 0 6px var(--green); }
+.printer-info-dot.off   { background:var(--red);   box-shadow:0 0 6px var(--red); }
+.printer-info-dot.pulse { animation:dotPulse 1.5s infinite; }
+.printer-info-text { flex:1; }
+.printer-info-text strong { font-size:13px; font-weight:600; display:block; }
+.printer-info-text span   { font-size:11px; color:var(--text-muted); }
+.webusb-warning { background:var(--yellow-dim); border:1px solid var(--yellow); border-radius:var(--radius-sm); padding:12px 16px; font-size:12px; color:var(--yellow); display:none; margin-bottom:12px; }
+.webusb-warning.visible { display:block; }
+.info-box { background:var(--accent-glow); border:1px solid var(--accent); border-radius:var(--radius-sm); padding:10px 14px; font-size:12px; color:var(--text-secondary); margin-bottom:14px; line-height:1.6; }
+.info-box strong { color:var(--accent); }
+.section-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px; margin-top:4px; display:block; }
+
+/* MANUAL BUILDER */
+.manual-line-list { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+.manual-line-row  { display:flex; align-items:center; gap:8px; }
+.manual-line-num  { font-size:11px; color:var(--text-muted); width:18px; text-align:right; flex-shrink:0; }
+.manual-line-del  { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:4px; border-radius:4px; }
+.manual-line-del:hover { color:var(--red); background:var(--red-dim); }
+.manual-preview-wrap { background:var(--bg-base); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin:12px 0; display:flex; justify-content:center; }
+.manual-preview-wrap .label-card { max-width:240px; width:100%; }
+.manual-queue { display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; margin-top:10px; }
+.manual-queue-item { display:flex; align-items:center; gap:8px; background:var(--bg-elevated); border:1px solid var(--purple); border-radius:var(--radius-sm); padding:8px 12px; }
+.manual-queue-item .mq-name  { flex:1; font-size:12px; font-weight:500; color:var(--purple); }
+.manual-queue-item .mq-count { font-size:11px; color:var(--text-muted); white-space:nowrap; }
+
+/* EDIT MODAL */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:3000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+.modal-overlay.open { opacity:1; pointer-events:all; }
+.modal-box { background:var(--bg-card); border:1px solid var(--border-light); border-radius:var(--radius); padding:24px; width:460px; max-width:94vw; box-shadow:var(--shadow); transform:translateY(10px); transition:transform 0.2s; }
+.modal-overlay.open .modal-box { transform:translateY(0); }
+.modal-title { font-size:15px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.edit-line-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.edit-line-num { font-size:11px; color:var(--text-muted); width:18px; text-align:right; flex-shrink:0; }
+.edit-line-del { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:4px; border-radius:4px; }
+.edit-line-del:hover { color:var(--red); background:var(--red-dim); }
+.modal-preview-wrap { background:var(--bg-base); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin:14px 0; display:flex; justify-content:center; }
+.modal-preview-wrap .label-card { max-width:260px; width:100%; }
+
+/* INTERACTIVE DEBUG ROWS */
+.dbg-row { display:flex; align-items:center; gap:0; padding:5px 10px; min-height:32px; border-bottom:1px solid transparent; }
+.dbg-row:last-child { border-bottom:none; }
+.dbg-row.dbg-area  { background:rgba(59,130,246,0.07); border-bottom-color:rgba(59,130,246,0.12); }
+.dbg-row.dbg-area:focus-within { background:rgba(59,130,246,0.13); }
+.dbg-row.dbg-mat   { background:rgba(245,158,11,0.07); border-bottom-color:rgba(245,158,11,0.12); }
+.dbg-row.dbg-mat:focus-within  { background:rgba(245,158,11,0.13); }
+.dbg-row.dbg-item  { padding:4px 8px; }
+.dbg-swatch { width:16px; height:16px; padding:0; border:1px solid rgba(255,255,255,0.2); border-radius:3px; cursor:pointer; flex-shrink:0; margin-right:6px; }
+.dbg-swatch::-webkit-color-swatch-wrapper { padding:0; border-radius:2px; }
+.dbg-swatch::-webkit-color-swatch { border:none; border-radius:2px; }
+.dbg-icon  { font-size:13px; margin-right:6px; flex-shrink:0; line-height:1; }
+.dbg-name  { background:transparent; border:none; outline:none; color:var(--accent); font-family:monospace; font-size:12px; font-weight:700; flex:1; min-width:0; padding:2px 4px; border-radius:3px; }
+.dbg-name:focus { background:rgba(59,130,246,0.12); }
+.dbg-mat-input { background:transparent; border:none; border-left:1px solid var(--border); outline:none; color:#f59e0b; font-family:monospace; font-size:11px; padding:2px 8px; width:130px; flex-shrink:0; }
+.dbg-mat-input:focus { background:rgba(245,158,11,0.1); }
+.dbg-mat-input::placeholder { color:var(--text-muted); }
+.dbg-del { background:none; border:none; color:transparent; cursor:pointer; font-size:13px; padding:2px 6px; border-radius:3px; flex-shrink:0; transition:all 0.15s; }
+.dbg-row:hover .dbg-del { color:var(--text-muted); }
+.dbg-del:hover { color:var(--red) !important; background:var(--red-dim); }
+.dbg-readonly  { font-family:monospace; font-size:12px; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Insert buttons on item rows */
+.er-insert-btns { display:flex; gap:4px; flex-shrink:0; opacity:0; transition:opacity 0.15s; }
+.dbg-row.dbg-item:hover .er-insert-btns { opacity:1; }
+.er-ins-btn { background:var(--accent-glow); border:1px solid var(--accent); color:var(--accent); font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; cursor:pointer; white-space:nowrap; font-family:monospace; transition:all 0.15s; }
+.er-ins-btn:hover { background:var(--accent); color:#fff; }
+.er-ins-mat { background:rgba(245,158,11,0.12); border-color:#f59e0b; color:#f59e0b; }
+.er-ins-mat:hover { background:#f59e0b; color:#000; }
+
+/* RENDER TAB */
+#tsplCanvas { border-radius:4px; cursor:crosshair; }
+#renderMetrics { margin-top:10px; }
+#renderMetrics span { background:var(--bg-elevated); border:1px solid var(--border); border-radius:4px; padding:3px 10px; }
+#renderMetrics strong { color:var(--accent); }
+
+/* SEMANTIC FIELD ROWS */
+.field-row { display:grid; grid-template-columns:28px 110px 1fr; gap:6px; align-items:center; margin-bottom:8px; }
+.field-icon { font-size:14px; text-align:center; flex-shrink:0; }
+.field-label { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; }
+.field-row.field-title .field-label { color:var(--accent); }
+
+/* BOLD TOGGLE PILL */
+.bold-toggle { display:inline-flex; align-items:center; gap:0; border:1px solid var(--border); border-radius:20px; overflow:hidden; background:var(--bg-elevated); flex-shrink:0; }
+.bold-toggle input[type="radio"] { display:none; }
+.bold-toggle label { padding:4px 12px; font-size:11px; cursor:pointer; transition:all 0.15s; color:var(--text-muted); user-select:none; }
+.bold-toggle input[type="radio"]:checked + label { background:var(--accent); color:#fff; font-weight:700; }
+.bold-toggle.bt-body input[type="radio"]:checked + label { background:var(--green); }
+
+/* LABEL CARD lines — bold variants */
+.lc-line0.bold  { font-weight:800 !important; }
+.lc-line0.light { font-weight:500 !important; }
+.lc-line.bold   { font-weight:700 !important; color:#222 !important; }
+
+@media print {
+  body { background:#fff !important; }
+  .module-header,.main-grid>div:first-child,.tabs,.bulk-bar,.divider,button,.btn,.filter-row,
+  #packagesContent,#historyContent,.tab-btn,#tab-packages,#tab-history,#tab-manual,#tab-textentry { display:none !important; }
+  .card { box-shadow:none !important; border:none !important; background:#fff !important; }
+  .preview-roll { gap:2px; }
+  .preview-row { background:#fff !important; border:1px dashed #bbb; break-inside:avoid; }
+  .label-card {
+    box-shadow:none !important;
+    border:1px solid #999 !important;
+    background:#fff !important;
+    break-inside:avoid;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  /* Ocultar hint de edición al imprimir */
+  .lc-edit-hint { display:none !important; }
+}
+</style>
+</head>
+<body>
+<div class="module">
+
+  <!-- HEADER -->
+  <div class="module-header">
+    <div class="module-title">
+      <div class="module-icon">🏷️</div>
+      <div>
+        <h1>Generador de Etiquetas</h1>
+        <p>v14 · 5 líneas semánticas · Negrita configurable · Manual rediseñado</p>
+      </div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-chip">📦 Paquetes: <span class="val" id="stat-pkgs">0</span></div>
+      <div class="stat-chip">🏷️ Etiquetas: <span class="val" id="stat-labels">0</span></div>
+      <div class="stat-chip">🖨️ Impresos hoy: <span class="val" id="stat-printed">0</span></div>
+      <div class="printer-chip searching" id="printerChip">
+        <span class="status-dot pulse"></span>
+        <span id="printerChipText">Buscando impresora...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- UPLOAD -->
+      <div class="card">
+        <div class="card-header">
+          <h3>📄 Cargar Documento</h3>
+          <span id="autoFlag" style="font-size:11px;color:var(--text-muted);"></span>
+        </div>
+        <div class="card-body">
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept=".docx,.doc,.pdf" />
+            <div class="upload-icon" id="uploadIcon">📂</div>
+            <p id="uploadText">Arrastra tu archivo aquí o haz clic</p>
+            <span id="uploadSub">Word (.docx) o PDF — sube el archivo para detectar secciones</span>
+          </div>
+          <div id="loadingBar" style="display:none;margin-top:10px;">
+            <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+            <div class="progress-row"><span id="loadingMsg">Analizando documento...</span></div>
+          </div>
+          <!-- INTERACTIVE DEBUG / EDITOR PANEL -->
+          <div id="debugPanel" style="display:none;margin-top:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">🔍 Ítems detectados — agrega áreas y materiales</span>
+              <div style="display:flex;gap:4px;">
+                <button class="btn btn-ghost btn-sm" onclick="addAreaLineToDebug()" style="font-size:11px;padding:3px 8px;">＋Área</button>
+                <button class="btn btn-ghost btn-sm" onclick="addMaterialLineToDebug()" style="font-size:11px;padding:3px 8px;">＋Mat</button>
+              </div>
+            </div>
+            <div id="debugContent" style="background:var(--bg-base);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:560px;overflow-y:auto;font-family:monospace;font-size:11px;line-height:1.0;color:var(--text-secondary);"></div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:5px;">🟦 = área (editable) · 🟨 = material (editable) · ✅ = ítem leído del archivo · <kbd style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;padding:1px 4px;">＋Área</kbd> / <kbd style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:3px;padding:1px 4px;">＋Mat</kbd> insertan encima del ítem elegido</div>
+            <button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="analyzeAndGenerate()">🔍 Analizar y Generar Etiquetas</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LABEL CONFIG -->
+      <div class="card">
+        <div class="card-header"><h3>⚙️ Configuración de Etiquetas</h3></div>
+        <div class="card-body">
+          <span class="section-label">Tamaño de etiqueta (individual)</span>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label>Ancho (mm)</label>
+              <input type="number" class="form-control" id="cfgLabelW" value="50" min="10" max="200" onchange="onConfigChange()" />
+            </div>
+            <div class="form-group">
+              <label>Alto (mm)</label>
+              <input type="number" class="form-control" id="cfgLabelH" value="25" min="5" max="200" onchange="onConfigChange()" />
+            </div>
+            <div class="form-group">
+              <label>Sep. col (mm)</label>
+              <input type="number" class="form-control" id="cfgColGap" value="0" min="0" max="10" step="0.5" onchange="onConfigChange()" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Etiquetas por paquete</label>
+              <input type="number" class="form-control" id="labelsPerPkg" value="2" min="1" max="20" />
+            </div>
+            <div class="form-group">
+              <label>Densidad (DPI)</label>
+              <select class="form-control" id="dpiSelect">
+                <option value="203" selected>203 DPI</option>
+                <option value="300">300 DPI</option>
+              </select>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <span class="section-label">Estilo de texto en etiqueta</span>
+          <div class="form-row" style="align-items:center;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Título (Línea 1)</label>
+              <div class="bold-toggle bt-title">
+                <input type="radio" name="titleWeight" id="twBold"   value="bold"   checked onchange="onConfigChange()">
+                <label for="twBold">N <strong>Bold</strong></label>
+                <input type="radio" name="titleWeight" id="twNormal" value="normal"        onchange="onConfigChange()">
+                <label for="twNormal">Normal</label>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Cuerpo (Líneas 2-5)</label>
+              <div class="bold-toggle bt-body">
+                <input type="radio" name="bodyWeight" id="bwNormal" value="normal" checked onchange="onConfigChange()">
+                <label for="bwNormal">Normal</label>
+                <input type="radio" name="bodyWeight" id="bwBold"   value="bold"          onchange="onConfigChange()">
+                <label for="bwBold">N <strong>Bold</strong></label>
+              </div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <span class="section-label">Fuentes TSC (bitmap internas)</span>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fuente Título</label>
+              <select class="form-control" id="cfgFontTitle" onchange="onConfigChange()">
+                <option value="2">2 · 12×20 dots (mediana)</option>
+                <option value="3" selected>3 · 16×24 dots (grande ✓)</option>
+                <option value="4">4 · 24×32 dots (muy grande)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fuente Cuerpo</label>
+              <select class="form-control" id="cfgFontBody" onchange="onConfigChange()">
+                <option value="1" selected>1 · 8×12 dots (pequeña ✓)</option>
+                <option value="2">2 · 12×20 dots (mediana)</option>
+                <option value="3">3 · 16×24 dots (grande)</option>
+              </select>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <span class="section-label">Datos del Proyecto</span>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Área fallback</label>
+              <input type="text" class="form-control" id="cfgArea" placeholder="Ej: General" />
+            </div>
+            <div class="form-group">
+              <label>Proyecto</label>
+              <input type="text" class="form-control" id="cfgProject" placeholder="Ej: Casa García" />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Material fallback</label>
+            <input type="text" class="form-control" id="cfgMaterial" placeholder="Usado si no hay mapa de área" />
+          </div>
+        </div>
+      </div>
+
+      <!-- PRINTER -->
+      <div class="card">
+        <div class="card-header">
+          <h3>🖨️ Impresora</h3>
+          <button class="btn btn-ghost btn-sm" onclick="toggleSection('printerConfig')">⚙️</button>
+        </div>
+        <div class="card-body">
+          <div class="webusb-warning" id="webusbWarning">⚠️ <strong>WebUSB no disponible.</strong> Usa Chrome o Edge para impresión directa USB.</div>
+          <div class="printer-info-bar">
+            <div class="printer-info-dot off pulse" id="printerDot"></div>
+            <div class="printer-info-text">
+              <strong id="printerName">Impresora no detectada</strong>
+              <span id="printerDetail">Verifique conexión USB</span>
+            </div>
+            <button class="btn btn-primary btn-sm" id="btnConnect"    onclick="connectPrinter()"    style="display:none;">🔌 Conectar</button>
+            <button class="btn btn-ghost  btn-sm" id="btnDisconnect"  onclick="disconnectPrinter()" style="display:none;">✕</button>
+          </div>
+          <div id="printerConfig" style="display:none;">
+            <div class="form-group"><label>Nombre impresora</label><input type="text" class="form-control" id="cfgPrinterLabel" value="TSC TE200" /></div>
+            <div class="form-row">
+              <div class="form-group"><label>Vendor ID (hex)</label><input type="text" class="form-control" id="cfgVendorId" value="0x1203" /></div>
+              <div class="form-group"><label>Product ID (opcional)</label><input type="text" class="form-control" id="cfgProductId" placeholder="Cualquiera" /></div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="reconnectPrinter()">🔄 Reconectar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILTERS -->
+      <div class="card" id="filterCard" style="display:none;">
+        <div class="card-header"><h3>🔍 Filtrar</h3></div>
+        <div class="card-body">
+          <input type="text" class="form-control" id="filterText" placeholder="Buscar descripción..." oninput="applyFilters()" />
+        </div>
+      </div>
+
+    </div><!-- end left -->
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="card">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('packages',this)">📦 Paquetes</button>
+          <button class="tab-btn"        onclick="switchTab('preview',this)">🏷️ Vista Previa</button>
+          <button class="tab-btn"        onclick="switchTab('render',this)" id="tabRenderBtn">📐 Render TSPL</button>
+          <button class="tab-btn"        onclick="switchTab('textentry',this)">📝 Por Texto</button>
+          <button class="tab-btn"        onclick="switchTab('manual',this)">✏️ Manual</button>
+          <button class="tab-btn"        onclick="switchTab('history',this)">📋 Historial</button>
+        </div>
+
+        <!-- PACKAGES TAB -->
+        <div class="tab-panel active" id="tab-packages">
+          <div id="packagesEmpty" class="empty-state">
+            <div class="empty-icon">📦</div>
+            <p>Configura el mapa de áreas y carga un documento para detectar paquetes</p>
+          </div>
+          <div id="packagesContent" style="display:none;">
+            <div class="bulk-bar">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="checkAll" onchange="toggleAll(this)" style="accent-color:var(--accent);" />
+                Seleccionar todos
+              </label>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <span id="selectedCount" style="color:var(--accent);font-weight:600;">0 seleccionados</span>
+                <span id="totalLabelCount" style="color:var(--yellow);font-size:11px;font-weight:600;"></span>
+                <button class="btn btn-ghost btn-sm" style="font-size:11px;" onclick="resetAllQty()" title="Restablecer todas las cantidades al predeterminado">↺ Restablecer cantidades</button>
+              </div>
+            </div>
+            <div class="items-list" id="itemsList"></div>
+            <div class="divider"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" onclick="printBrowserFallback()">🖨️ Imprimir por navegador</button>
+              <button class="btn btn-ghost btn-sm" onclick="previewTspl()" title="Ver el código TSPL generado">🔍 Ver TSPL</button>
+              <button class="btn btn-success" onclick="printSelected()">📡 Enviar a Impresora USB</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PREVIEW TAB -->
+        <div class="tab-panel" id="tab-preview">
+          <div id="previewEmpty" class="empty-state">
+            <div class="empty-icon">🏷️</div>
+            <p>Las etiquetas aparecerán aquí en formato 2×fila</p>
+          </div>
+          <div id="previewContent" style="display:none;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+              <div>
+                <p style="font-size:13px;font-weight:600;">Vista previa del rollo</p>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:2px;">2 etiquetas por fila · Escala visual</p>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-ghost btn-sm"   onclick="printBrowserFallback()">🖨️ Imprimir</button>
+                <button class="btn btn-ghost btn-sm"   onclick="previewTspl()" title="Ver TSPL generado">🔍 TSPL</button>
+                <button class="btn btn-success btn-sm" onclick="printSelected()">📡 Enviar USB</button>
+              </div>
+            </div>
+            <div style="background:var(--bg-base);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;">
+              <div style="text-align:center;font-size:10px;color:var(--text-muted);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">◀ Ancho del rollo — 2 etiquetas lado a lado ▶</div>
+              <div class="preview-roll" id="previewRoll"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RENDER TSPL TAB -->
+        <div class="tab-panel" id="tab-render">
+          <div id="renderEmpty" class="empty-state">
+            <div class="empty-icon">📐</div>
+            <p>Selecciona paquetes y haz clic en <strong>Renderizar</strong> para ver la simulación exacta de la etiqueta térmica</p>
+          </div>
+          <div id="renderContent">
+            <!-- controles -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:10px;">
+              <div>
+                <p style="font-size:13px;font-weight:600;">🖨️ Simulación fiel — coordenadas TSPL en canvas</p>
+                <p style="font-size:11px;color:var(--text-muted);margin-top:2px;">Mismo layout que imprimirá la TSC TE200 · Escala real en mm</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-ghost btn-sm" onclick="renderPrev()">◀</button>
+                <span id="renderPageInfo" style="font-size:12px;color:var(--text-secondary);align-self:center;min-width:80px;text-align:center;">— / —</span>
+                <button class="btn btn-ghost btn-sm" onclick="renderNext()">▶</button>
+                <button class="btn btn-primary btn-sm" onclick="renderAll()">🔄 Renderizar</button>
+                <button class="btn btn-success btn-sm" onclick="printSelected()">📡 Enviar USB</button>
+              </div>
+            </div>
+            <!-- overflow alert -->
+            <div id="renderOverflowAlert" style="display:none;background:rgba(239,68,68,0.12);border:1px solid #ef4444;border-radius:6px;padding:10px 14px;font-size:12px;color:#ef4444;margin-bottom:10px;">
+              ⚠️ <strong>Overflow detectado:</strong> el contenido supera la altura de la etiqueta. <span id="renderOverflowMsg"></span>
+            </div>
+            <!-- canvas wrapper -->
+            <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:8px;padding:16px;display:flex;justify-content:center;align-items:flex-start;min-height:160px;">
+              <canvas id="tsplCanvas" style="display:block;image-rendering:pixelated;max-width:100%;border-radius:4px;"></canvas>
+            </div>
+            <!-- metrics bar -->
+            <div id="renderMetrics" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--text-muted);padding:0 2px;"></div>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-textentry">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+            <!-- Input panel -->
+            <div>
+              <p style="font-size:13px;font-weight:700;margin-bottom:4px;">📝 Entrada por Texto</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">
+                Escribe o pega una línea por etiqueta. Separa columnas con <code style="color:var(--accent);">|</code> para añadir dimensión, material o ubicación.
+              </p>
+
+              <div class="info-box" style="margin-bottom:12px;">
+                <strong>Formato de 5 campos separados por |</strong><br>
+                <code style="font-size:11px;">Cant+Nombre | Medidas | Color/Mat | Proyecto | Área</code><br>
+                <span style="font-size:10px;color:var(--text-muted);">Los campos vacíos quedan en blanco en la etiqueta</span>
+              </div>
+
+              <textarea class="text-entry-area" id="textEntryInput"
+                placeholder="2 PUERTAS ER+C4S | 28 7/8 X 11 1/2 | ROBLE AURORA 5/8 | ZORZALES DE MERENDON | APTO 601&#10;1 CLOSET | 240 X 60 | BLANCO 5/8 | CASA GARCIA | DORM 1&#10;3 CAJONES | 30 X 15 | MDF NATURAL | PROYECTO X | COCINA"
+                oninput="refreshTextPreview()"></textarea>
+              <div class="text-line-count" id="textLineCount">0 líneas detectadas</div>
+
+              <div class="form-row" style="margin-top:12px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Etiquetas por ítem</label>
+                  <input type="number" class="form-control" id="textQty" value="2" min="1" max="20" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Proyecto (opcional)</label>
+                  <input type="text" class="form-control" id="textProject" placeholder="Ej: Casa García" />
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:14px;">
+                <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="clearTextEntry()">🗑️ Limpiar</button>
+                <button class="btn btn-purple" style="flex:2;" onclick="generateFromText()">➕ Generar etiquetas</button>
+              </div>
+            </div>
+
+            <!-- Preview panel -->
+            <div>
+              <p style="font-size:13px;font-weight:700;margin-bottom:4px;">👁️ Vista previa de líneas</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">Se agregarán como paquetes al lote actual.</p>
+              <div id="textPreviewEmpty" class="empty-state" style="padding:20px 10px;">
+                <div class="empty-icon" style="font-size:28px;">📝</div>
+                <p>Escribe líneas para ver la vista previa</p>
+              </div>
+              <div id="textPreviewList" class="text-preview-list" style="display:none;"></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- MANUAL TAB -->
+        <div class="tab-panel" id="tab-manual">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+            <!-- Builder panel -->
+            <div>
+              <p style="font-size:13px;font-weight:700;margin-bottom:4px;">✏️ Crear Etiqueta Manual</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">5 líneas semánticas fijas · se agrega al lote al hacer clic en Agregar.</p>
+
+              <!-- 5 semantic fields -->
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;" id="manualSemanticFields">
+                <div class="field-row field-title">
+                  <span class="field-icon">🔢</span>
+                  <span class="field-label">Cant. + Nombre</span>
+                  <input type="text" class="form-control" id="mf0" placeholder="Ej: 2 PUERTAS ER+C4S" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">📏</span>
+                  <span class="field-label">Medidas</span>
+                  <input type="text" class="form-control" id="mf1" placeholder="Ej: 28 7/8 X 11 1/2" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">🎨</span>
+                  <span class="field-label">Color / Material</span>
+                  <input type="text" class="form-control" id="mf2" placeholder="Ej: ROBLE AURORA 5/8" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">🏗️</span>
+                  <span class="field-label">Proyecto</span>
+                  <input type="text" class="form-control" id="mf3" placeholder="Ej: ZORZALES DE MERENDON" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+                <div class="field-row">
+                  <span class="field-icon">📍</span>
+                  <span class="field-label">Área</span>
+                  <input type="text" class="form-control" id="mf4" placeholder="Ej: APTO 601 JG-FL" style="font-size:12px;" oninput="refreshManualPreview()" />
+                </div>
+              </div>
+
+              <div class="manual-preview-wrap">
+                <div class="label-card" id="manualPreviewCard">
+                  <span style="color:#aaa;font-size:10px;">Vista previa...</span>
+                </div>
+              </div>
+
+              <div class="form-row" style="margin-bottom:10px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Cantidad etiquetas</label>
+                  <input type="number" class="form-control" id="manualQty" value="2" min="1" max="20" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label>Copias del lote</label>
+                  <input type="number" class="form-control" id="manualCopies" value="1" min="1" max="50" />
+                </div>
+              </div>
+
+              <button class="btn btn-purple btn-block" onclick="addManualLabel()">➕ Agregar al lote</button>
+            </div>
+
+            <!-- Queue panel -->
+            <div>
+              <p style="font-size:13px;font-weight:700;margin-bottom:4px;">📋 Cola de etiquetas manuales</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">Se combinan con las del DOCX al imprimir.</p>
+
+              <div id="manualQueueEmpty" class="empty-state" style="padding:20px 10px;">
+                <div class="empty-icon" style="font-size:28px;">✏️</div>
+                <p>Sin etiquetas manuales aún</p>
+              </div>
+              <div id="manualQueue" class="manual-queue" style="display:none;"></div>
+
+              <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                <button class="btn btn-ghost btn-sm"   onclick="clearManualQueue()" style="flex:1;">🗑️ Limpiar</button>
+                <button class="btn btn-success btn-sm" onclick="printManualOnly()"  style="flex:1;">📡 Solo manuales</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- HISTORY TAB -->
+        <div class="tab-panel" id="tab-history">
+          <div id="historyEmpty" class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>El historial de impresiones aparecerá aquí</p>
+          </div>
+          <div id="historyContent" style="display:none;">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+              <button class="btn btn-ghost btn-sm" onclick="clearHistory()">🗑️ Limpiar historial</button>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="history-table">
+                <thead><tr><th>Fecha / Hora</th><th>Proyecto</th><th>Paquetes</th><th>Etiquetas</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="historyBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end main card -->
+    </div><!-- end right -->
+  </div><!-- end grid -->
+</div><!-- end module -->
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal-box">
+    <div class="modal-title">✏️ Editar Etiqueta</div>
+    <div class="modal-preview-wrap"><div class="label-card" id="modalPreviewCard"></div></div>
+
+    <!-- 5 semantic fields -->
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px;">
+      <div class="field-row field-title">
+        <span class="field-icon">🔢</span>
+        <span class="field-label">Cant.+Nombre</span>
+        <input type="text" class="form-control" id="ef0" placeholder="Ej: 2 PUERTAS ER+C4S" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">📏</span>
+        <span class="field-label">Medidas</span>
+        <input type="text" class="form-control" id="ef1" placeholder="Ej: 28 7/8 X 11 1/2" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">🎨</span>
+        <span class="field-label">Color/Material</span>
+        <input type="text" class="form-control" id="ef2" placeholder="Ej: ROBLE AURORA 5/8" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">🏗️</span>
+        <span class="field-label">Proyecto</span>
+        <input type="text" class="form-control" id="ef3" placeholder="Ej: ZORZALES DE MERENDON" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+      <div class="field-row">
+        <span class="field-icon">📍</span>
+        <span class="field-label">Área</span>
+        <input type="text" class="form-control" id="ef4" placeholder="Ej: APTO 601 JG-FL" style="font-size:12px;" oninput="syncModalPreview()" />
+      </div>
+    </div>
+    <div class="divider" style="margin:14px 0 10px;"></div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);display:block;margin-bottom:8px;">🏷️ Cantidad de etiquetas para este ítem</label>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="pkg-qty-wrap" id="modalQtyWrap" style="border-radius:var(--radius-sm);">
+          <button class="pkg-qty-btn" id="modalQtyDec" tabindex="-1" onclick="modalQtyChange(-1)">−</button>
+          <input class="pkg-qty-inp" type="number" min="1" max="99" value="2" id="modalQtyInp" style="width:52px;" oninput="modalQtySyncStyle()" />
+          <button class="pkg-qty-btn" id="modalQtyInc" tabindex="-1" onclick="modalQtyChange(1)">+</button>
+        </div>
+        <span style="font-size:12px;color:var(--text-muted);">etiquetas para este ítem</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-ghost"   onclick="closeEditModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEditModal()">💾 Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let rawText      = '';
+let packages     = [];       // from DOCX/PDF
+let manualPkgs   = [];       // user-created
+let selectedIds  = new Set();
+let history      = JSON.parse(localStorage.getItem('etiquetas_history')  || '[]');
+let areaMap      = JSON.parse(localStorage.getItem('etiquetas_areamap')  || '[]');
+// Migrate v9 entries that lack a color field
+areaMap = areaMap.map(r => r.color ? r : Object.assign({color:'#6366f1'}, r));
+let labelsCfg    = { labelsPerPkg:2, dpi:203, labelW_mm:50, labelH_mm:25, colGap_mm:0 };
+let docxParagraphs = [];
+let usbDevice    = null;
+let printerReady = false;
+let manualIdCtr  = 10000;
+
+// ═══════════════════════════════════════════════
+//  EDITOR ROWS — mixed list of headers + items
+//  Each entry: { type:'area'|'material'|'item', ...fields }
+//  area:     { name, material, color }
+//  material: { name, color }
+//  item:     { para }   ← raw docx paragraph
+// ═══════════════════════════════════════════════
+let editorRows = [];
+const PALETTE  = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#a855f7','#14b8a6','#f97316','#ec4899','#6366f1','#0ea5e9'];
+
+// ── Build from parsed paragraphs: items only ─────────────────
+function buildEditorRows() {
+  editorRows = [];
+  for (const para of docxParagraphs) {
+    if (para.isSep || !para.fullText || para.fullText.length < 2) continue;
+    const lineMatch = para.fullText.match(/^(\d+)\s*[-–—]\s*(.+)$/s);
+    if (!lineMatch) continue;
+    editorRows.push({ type: 'item', para });
+  }
+}
+
+// ── Snapshot current DOM edits back into editorRows ──────────
+function snapshotEditorRows() {
+  const container = document.getElementById('debugContent');
+  const domRows   = container.querySelectorAll('[data-er-idx]');
+  domRows.forEach(domRow => {
+    const i   = parseInt(domRow.dataset.erIdx);
+    const row = editorRows[i];
+    if (!row) return;
+    if (row.type === 'area') {
+      row.color    = domRow.querySelector('.er-color')?.value    ?? row.color;
+      row.name     = domRow.querySelector('.er-name')?.value.trim()     ?? row.name;
+      row.material = domRow.querySelector('.er-material')?.value.trim() ?? row.material;
+    } else if (row.type === 'material') {
+      row.color = domRow.querySelector('.er-color')?.value ?? row.color;
+      row.name  = domRow.querySelector('.er-name')?.value.trim()  ?? row.name;
+    }
+  });
+}
+
+// ── Render the whole panel ────────────────────────────────────
+function renderEditorPanel() {
+  const el = document.getElementById('debugContent');
+  el.innerHTML = '';
+  editorRows.forEach((row, i) => {
+    el.appendChild(makeEditorRow(row, i));
+  });
+  if (!editorRows.length) {
+    el.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:11px;">Sin ítems detectados en el archivo.</div>';
+  }
+}
+
+function makeEditorRow(row, i) {
+  const div = document.createElement('div');
+  div.dataset.erIdx = i;
+
+  if (row.type === 'area') {
+    div.className = 'dbg-row dbg-area';
+    div.innerHTML = `
+      <input type="color" class="er-color dbg-swatch" value="${row.color||'#3b82f6'}" title="Color del área" />
+      <span class="dbg-icon">🟦</span>
+      <input type="text" class="er-name dbg-name" value="${escHtml(row.name||'')}" placeholder="Nombre área..." />
+      <input type="text" class="er-material dbg-mat-input" value="${escHtml(row.material||'')}" placeholder="material..." />
+      <button class="dbg-del" title="Eliminar" onclick="removeEditorRow(${i})">✕</button>
+    `;
+    return div;
+  }
+
+  if (row.type === 'material') {
+    div.className = 'dbg-row dbg-mat';
+    div.innerHTML = `
+      <input type="color" class="er-color dbg-swatch" value="${row.color||'#f59e0b'}" title="Color material" />
+      <span class="dbg-icon">🟨</span>
+      <input type="text" class="er-name dbg-name" value="${escHtml(row.name||'')}" placeholder="Nombre material..." style="color:#f59e0b;" />
+      <span class="dbg-mat-input" style="color:var(--text-muted);font-size:10px;padding:0 6px;">material</span>
+      <button class="dbg-del" title="Eliminar" onclick="removeEditorRow(${i})">✕</button>
+    `;
+    return div;
+  }
+
+  // item row
+  const t = row.para.fullText;
+  div.className = 'dbg-row dbg-item';
+  div.innerHTML = `
+    <span class="er-insert-btns">
+      <button class="er-ins-btn" title="Insertar Área arriba" onclick="insertRowAbove(${i},'area')">＋Área</button>
+      <button class="er-ins-btn er-ins-mat" title="Insertar Material arriba" onclick="insertRowAbove(${i},'material')">＋Mat</button>
+    </span>
+    <span class="dbg-icon" style="margin-left:4px;">✅</span>
+    <span class="dbg-readonly" style="color:var(--green);">${escHtml(t.substring(0,68))}${t.length>68?'…':''}</span>
+  `;
+  return div;
+}
+
+// ── Insert a header row above item at index i ─────────────────
+function insertRowAbove(i, type) {
+  snapshotEditorRows();
+  const areaCount = editorRows.filter(r => r.type === 'area' || r.type === 'material').length;
+  if (type === 'area') {
+    editorRows.splice(i, 0, { type:'area', name:'', material:'', color: PALETTE[areaCount % PALETTE.length] });
+  } else {
+    editorRows.splice(i, 0, { type:'material', name:'', color: PALETTE[(areaCount+2) % PALETTE.length] });
+  }
+  renderEditorPanel();
+  // Focus the name input of the newly inserted row
+  const newRow = document.querySelector(`[data-er-idx="${i}"] .er-name`);
+  if (newRow) newRow.focus();
+}
+
+// ── Remove a header row ───────────────────────────────────────
+function removeEditorRow(i) {
+  snapshotEditorRows();
+  editorRows.splice(i, 1);
+  renderEditorPanel();
+}
+
+// ── Add area/material at bottom (for the + buttons in header) ─
+function addAreaLineToDebug()    { snapshotEditorRows(); editorRows.push({ type:'area',     name:'', material:'', color: PALETTE[editorRows.filter(r=>r.type!=='item').length % PALETTE.length] }); renderEditorPanel(); setTimeout(()=>{ const els=document.querySelectorAll('.er-name'); if(els.length) els[els.length-1].focus(); },50); }
+function addMaterialLineToDebug(){ snapshotEditorRows(); editorRows.push({ type:'material', name:'', color: PALETTE[(editorRows.filter(r=>r.type!=='item').length+2) % PALETTE.length] }); renderEditorPanel(); setTimeout(()=>{ const els=document.querySelectorAll('.er-name'); if(els.length) els[els.length-1].focus(); },50); }
+
+// ── Generate packages from editorRows ────────────────────────
+function analyzeAndGenerate() {
+  if (!editorRows.length) {
+    toast('Primero carga un archivo DOCX o PDF','warning'); return;
+  }
+  snapshotEditorRows();
+  readConfig();
+  const projectOvr  = document.getElementById('cfgProject').value.trim().toUpperCase();
+  const materialFallback = document.getElementById('cfgMaterial').value.trim();
+  const areaFallback     = document.getElementById('cfgArea').value.trim();
+
+  let currentArea     = areaFallback;
+  let currentMaterial = materialFallback;
+  let currentColor    = '';
+  let id = 1;
+  packages = [];
+
+  for (const row of editorRows) {
+    if (row.type === 'area') {
+      currentArea     = row.name     || areaFallback;
+      currentMaterial = row.material || materialFallback;
+      currentColor    = row.color    || '';
+      continue;
+    }
+    if (row.type === 'material') {
+      currentMaterial = row.name || materialFallback;
+      // keep currentArea and currentColor
+      continue;
+    }
+    // item
+    const pkg = buildPackageFromPara(row.para, id++, currentArea, currentMaterial, currentColor, projectOvr);
+    if (pkg) packages.push(pkg);
+  }
+
+  // Update areaMap for resolvers (backward compat)
+  areaMap = editorRows
+    .filter(r => r.type === 'area' && r.name)
+    .map(r => ({ area: r.name, material: r.material, color: r.color }));
+  saveAreaMap();
+
+  selectedIds = new Set([...packages.map(p=>p.id), ...manualPkgs.map(p=>p.id)]);
+  renderPackagesList(); renderPreview(); updateStats();
+  document.getElementById('filterCard').style.display = '';
+  document.getElementById('uploadSub').textContent = `${packages.length} paquetes · ${packages.length*labelsCfg.labelsPerPkg} etiquetas generadas`;
+  if (!packages.length) toast('No se detectaron ítems. Verifica el archivo.','warning');
+  else toast(`✅ ${packages.length} paquetes · ${packages.length*labelsCfg.labelsPerPkg} etiquetas listas`,'success');
+  switchTab('preview', document.querySelectorAll('.tab-btn')[1]);
+  if (!printerReady) toast('⚠️ Impresora no conectada. Conéctala antes de imprimir.','warning');
+}
+
+// ── Build one package from a raw para + context ───────────────
+function buildPackageFromPara(para, id, currentArea, currentMaterial, currentColor, projectOvr) {
+  const { fullText, boldText = '' } = para;
+  const lineMatch = fullText.match(/^(\d+)\s*[-–—]\s*(.+)$/s);
+  if (!lineMatch) return null;
+
+  const qty = lineMatch[1].trim();
+  let rest  = lineMatch[2].trim();
+
+  // Inline UBICACIÓN from bold suffix
+  let inlineUbi = '';
+  if (boldText) {
+    const bc = boldText.replace(/^[–—\s-]+/, '').trim();
+    const lm = bc.match(/(ba[ñn]o[\s\w#]*|wic[\s\w]+|dorm[\s#\d]+|visitas|principal|compartido|cocina|closet[\s\w]+|cuarto[\s\w]*|sala[\s\w]*|comedor[\s\w]*|dormitorio[\s\w]*|habitaci[oó]n[\s\w]*|rec[aá]mara[\s\w]*|oficina[\s\w]*|lavander[\s\w]*|terraza[\s\w]*|pasillo[\s\w]*|garage[\s\w]*|bodega[\s\w]*|master[\s\w]*)/i);
+    if (lm) {
+      const start = bc.toLowerCase().indexOf(lm[0].toLowerCase());
+      inlineUbi = bc.slice(start).trim();
+      const esc = bc.slice(start).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      rest = rest.replace(new RegExp('\\s*[-–—]?\\s*' + esc + '\\s*$', 'i'), '').trim();
+    }
+  }
+
+  // ── Segmentación: Fila 1 = qty+nombre | Fila 2 = refs/medidas | resto IGNORADO
+  //
+  // 3 formatos soportados:
+  //  A) "nombre – dims – ignorado"          guiones como separadores
+  //  B) "nombre (dims) – ignorado"          paréntesis pegado al nombre
+  //  C) "nombre dims"                       dimensión embebida sin guión
+  //     (sólo cuando nombre inicia con letra, ej: "Fondo 80x24", "Toe Kick 96x4")
+
+  const allSegs = rest.split(/\s*[-–—]\s*/);   // todos los segmentos por guión
+  let nombre = allSegs[0].trim();
+  let dims   = '';
+
+  // Prioridad 1 — paréntesis al final del nombre  (Formato B)
+  // Ej: "27 Shelf Pack (2 Plat/2 Tubos)"  →  nombre="27 Shelf Pack", dims="(2 Plat/2 Tubos)"
+  const parenSuffix = nombre.match(/^(.+?)\s+(\([^)]+\))$/);
+  if (parenSuffix && parenSuffix[1].trim().length >= 2) {
+    nombre = parenSuffix[1].trim();
+    dims   = parenSuffix[2].trim();
+    // allSegs[1+] ignorados completamente
+
+  // Prioridad 2 — dimensión embebida sin guión  (Formato C)
+  // Sólo aplica cuando nombre empieza con letra (no con dígito),
+  // y contiene un bloque numérico después del nombre textual.
+  // Ej: "Fondo 80x24 Pantry", "Toe Kick 96x4", "Panel 30x20 Prof."
+  } else if (/^\D/.test(nombre)) {
+    const embDim = nombre.match(/^(\D.*?)\s+(\d.+)$/);
+    if (embDim && embDim[1].trim().length >= 1) {
+      nombre = embDim[1].trim();
+      dims   = embDim[2].trim();
+      // allSegs[1+] ignorados completamente
+    } else {
+      // nombre no tiene dimensión embebida → usar allSegs[1] como Fila 2
+      dims = allSegs[1] ? allSegs[1].trim() : '';
+      // allSegs[2+] siempre ignorados
+    }
+
+  } else {
+    // Formato A puro: nombre empieza con dígito (ej: "80 Pantry", "27 Shelf Pack")
+    // Fila 2 = segundo segmento del guión; el resto se ignora
+    dims = allSegs[1] ? allSegs[1].trim() : '';
+    // allSegs[2+] siempre ignorados
+  }
+
+  if (!nombre || nombre.length < 2) return null;
+
+  const mat = (currentMaterial || '').toUpperCase();
+  const ubi = (inlineUbi || currentArea || '').toUpperCase();
+  const prj = (projectOvr || '').toUpperCase();
+
+  const lines = [];
+  // TÍTULO: cantidad + nombre — una sola línea (no partir mid-word el nombre)
+  // Se permite hasta 38 chars; si aun así desborda, splitLongLine respeta espacios.
+  const titleFull = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
+  splitLongLine(titleFull, 38).forEach(l => lines.push(l));
+
+  // DIMENSIONES — dividir si es larga
+  const d = normalizeFractions(dims);
+  if (d) splitLongLine(d.toUpperCase(), 32).forEach(l => lines.push(l));
+
+  // MATERIAL — una sola línea, recortar
+  if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));
+
+  // PROYECTO — línea separada
+  if (prj) splitLongLine(prj, 30).forEach(l => lines.push(l));
+  // ÁREA/UBICACIÓN — línea separada
+  if (ubi) splitLongLine(ubi, 30).forEach(l => lines.push(l));
+
+  // Máximo 5 líneas para que no desborde la etiqueta física
+  return { id, lines: lines.slice(0, 5), areaColor: currentColor, isManual: false };
+}
+
+// ── Divide texto largo en sublíneas de máx N caracteres ──────
+function splitLongLine(text, maxChars) {
+  if (!text || text.length <= maxChars) return [text];
+  const words = text.split(' ');
+  const result = [];
+  let current = '';
+  for (const word of words) {
+    if (!current) { current = word; continue; }
+    if ((current + ' ' + word).length <= maxChars) {
+      current += ' ' + word;
+    } else {
+      result.push(current);
+      current = word;
+    }
+  }
+  if (current) result.push(current);
+  return result.length ? result : [text.substring(0, maxChars)];
+}
+
+function saveAreaMap() { localStorage.setItem('etiquetas_areamap', JSON.stringify(areaMap)); }
+function renderAreaMap() {}
+function addAreaRow()    { addAreaLineToDebug(); }
+function removeAreaRow() {}
+
+function resolveAreaMaterial(areaName) {
+  if (!areaName || !areaMap.length) return '';
+  const lower = areaName.toLowerCase().trim();
+  for (const row of areaMap) {
+    if (row.area && lower.includes(row.area.toLowerCase().trim()))
+      return row.material.toUpperCase();
+  }
+  return '';
+}
+
+function resolveAreaColor(areaName) {
+  if (!areaName || !areaMap.length) return '';
+  const lower = areaName.toLowerCase().trim();
+  for (const row of areaMap) {
+    // Match against area name
+    if (row.area && lower.includes(row.area.toLowerCase().trim()))
+      return row.color || '';
+    // Also match against material field (user may key by material name)
+    if (row.material && lower.includes(row.material.toLowerCase().trim()))
+      return row.color || '';
+  }
+  return '';
+}
+
+// ═══════════════════════════════════════════════
+//  DEBUG PANEL — build + toggle
+// ═══════════════════════════════════════════════
+function buildDebugContent() {
+  buildEditorRows();
+  renderEditorPanel();
+}
+
+function toggleDebugPanel() {
+  const p = document.getElementById('debugPanel');
+  p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+function removeDebugAreaRow(btn) {
+  btn.closest('.dbg-row').remove();
+}
+
+// ═══════════════════════════════════════════════
+//  PRINTER
+// ═══════════════════════════════════════════════
+async function initPrinter() {
+  if (!navigator.usb) {
+    document.getElementById('webusbWarning').classList.add('visible');
+    setPrinterUI('error','WebUSB no disponible','Usa Chrome o Edge');
+    document.getElementById('btnConnect').style.display = 'none';
+    updatePrinterChip('no-webusb','⚠️ Requiere Chrome/Edge'); return;
+  }
+  setPrinterUI('searching','Buscando impresora...','Detectando USB...');
+  try {
+    const devices = await navigator.usb.getDevices();
+    const printer = devices.find(d => d.vendorId === parseVendorId());
+    if (printer) {
+      usbDevice = printer; printerReady = true;
+      const n = document.getElementById('cfgPrinterLabel').value || printer.productName || 'TSC';
+      setPrinterUI('ready', n, `VID:0x${printer.vendorId.toString(16).toUpperCase()} · Listo`);
+      document.getElementById('btnDisconnect').style.display = '';
+      document.getElementById('btnConnect').style.display    = 'none';
+      updatePrinterChip('ready','🟢 '+n);
+    } else {
+      usbDevice = null; printerReady = false;
+      setPrinterUI('error','No detectada','Verifique USB y haga clic en Conectar');
+      document.getElementById('btnConnect').style.display = '';
+      updatePrinterChip('error','🔴 No detectada');
+    }
+  } catch(e) {
+    setPrinterUI('error','Error',e.message);
+    document.getElementById('btnConnect').style.display = '';
+    updatePrinterChip('error','🔴 Error USB');
+  }
+}
+
+async function connectPrinter() {
+  if (!navigator.usb) { toast('Usa Chrome o Edge.','error'); return; }
+  const vid = parseVendorId(), pid = parseProductId();
+  const fl  = pid ? [{vendorId:vid,productId:pid}] : [{vendorId:vid}];
+  try {
+    updatePrinterChip('searching','⏳ Conectando...');
+    const dev = await navigator.usb.requestDevice({ filters:fl });
+    usbDevice = dev; printerReady = true;
+    const n = document.getElementById('cfgPrinterLabel').value || dev.productName || 'TSC';
+    setPrinterUI('ready',n,`VID:0x${dev.vendorId.toString(16).toUpperCase()} · Conectada`);
+    document.getElementById('btnDisconnect').style.display = '';
+    document.getElementById('btnConnect').style.display    = 'none';
+    updatePrinterChip('ready','🟢 '+n);
+    toast('Impresora conectada: '+n,'success');
+  } catch(e) {
+    if (e.name==='NotFoundError') toast('No se seleccionó ninguna impresora.','warning');
+    else toast('Error: '+e.message,'error');
+    setPrinterUI('error','Sin conexión','Verifique USB');
+    updatePrinterChip('error','🔴 Sin conexión'); printerReady = false;
+  }
+}
+
+async function reconnectPrinter() { usbDevice=null; printerReady=false; await connectPrinter(); }
+
+function disconnectPrinter() {
+  usbDevice=null; printerReady=false;
+  setPrinterUI('error','Desconectada','Haga clic en Conectar');
+  document.getElementById('btnConnect').style.display    = '';
+  document.getElementById('btnDisconnect').style.display = 'none';
+  updatePrinterChip('error','🔴 Desconectada');
+  toast('Impresora desconectada','info');
+}
+
+async function sendToPrinter(tspl) {
+  if (!usbDevice) throw Object.assign(new Error('No conectada'),{code:'NO_PRINTER'});
+  let opened=false, claimed=false, iNum=0, eNum=1;
+  try {
+    if (!usbDevice.opened) { await usbDevice.open(); opened=true; }
+    if (usbDevice.configuration===null) await usbDevice.selectConfiguration(1);
+    outer: for (const iface of usbDevice.configuration.interfaces) {
+      for (const alt of iface.alternates) {
+        for (const ep of alt.endpoints) {
+          if (ep.type==='bulk'&&ep.direction==='out') { iNum=iface.interfaceNumber; eNum=ep.endpointNumber; break outer; }
+        }
+      }
+    }
+    await usbDevice.claimInterface(iNum); claimed=true;
+    const res = await usbDevice.transferOut(eNum, new TextEncoder().encode(tspl));
+    if (res.status!=='ok') throw new Error('USB transfer error: '+res.status);
+  } finally {
+    if (claimed) try { await usbDevice.releaseInterface(iNum); } catch(e){}
+    if (opened)  try { await usbDevice.close(); } catch(e){}
+  }
+}
+
+function parseVendorId() { const r=document.getElementById('cfgVendorId').value.trim(); return parseInt(r,r.startsWith('0x')?16:10)||0x1203; }
+function parseProductId() { const r=document.getElementById('cfgProductId').value.trim(); return r?(parseInt(r,r.startsWith('0x')?16:10)||null):null; }
+function setPrinterUI(state,name,detail) {
+  document.getElementById('printerName').textContent  = name;
+  document.getElementById('printerDetail').textContent = detail;
+  const dot = document.getElementById('printerDot');
+  dot.className = 'printer-info-dot';
+  if (state==='ready') dot.classList.add('on');
+  else if (state==='searching') dot.classList.add('off','pulse');
+  else dot.classList.add('off');
+}
+function updatePrinterChip(state,text) {
+  const chip = document.getElementById('printerChip');
+  const dot  = chip.querySelector('.status-dot');
+  chip.className = 'printer-chip '+state;
+  dot.className  = 'status-dot'+(state==='searching'?' pulse':'');
+  document.getElementById('printerChipText').textContent = text;
+}
+function toggleSection(id) { const el=document.getElementById(id); el.style.display=el.style.display==='none'?'':'none'; }
+
+// ═══════════════════════════════════════════════
+//  FILE UPLOAD
+// ═══════════════════════════════════════════════
+const fileInput  = document.getElementById('fileInput');
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover',  e=>{ e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', ()=> uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e=>{ e.preventDefault(); uploadZone.classList.remove('drag-over'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', ()=>{ if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+async function handleFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  showLoading(true,'Leyendo archivo...');
+  uploadZone.classList.remove('has-file','has-error');
+  docxParagraphs = [];
+  try {
+    if      (ext==='pdf')              rawText = await extractPdf(file);
+    else if (ext==='docx'||ext==='doc') rawText = await extractDocx(file);
+    else {
+      toast('Formato no soportado. Usa .docx o .pdf','error');
+      uploadZone.classList.add('has-error');
+      document.getElementById('uploadIcon').textContent='❌';
+      document.getElementById('uploadText').textContent='Formato no válido';
+      showLoading(false); return;
+    }
+    uploadZone.classList.add('has-file');
+    document.getElementById('uploadIcon').textContent='✅';
+    document.getElementById('uploadText').textContent=file.name;
+    document.getElementById('uploadSub').textContent =`${(file.size/1024).toFixed(1)} KB · Detectando secciones...`;
+    showLoading(true,'Detectando secciones...');
+    await new Promise(r=>setTimeout(r,80));
+    readConfig();
+    buildDebugContent();
+    document.getElementById('uploadSub').textContent = `${(file.size/1024).toFixed(1)} KB · Asigna colores y genera`;
+    document.getElementById('debugPanel').style.display = '';
+    showLoading(false);
+    toast('✅ Archivo cargado — edita las áreas y pulsa "Analizar y Generar"','info');
+  } catch(err) {
+    console.error(err);
+    toast('Error al leer: '+err.message,'error');
+    uploadZone.classList.add('has-error');
+    document.getElementById('uploadIcon').textContent='❌';
+    document.getElementById('uploadText').textContent='Error al leer';
+    showLoading(false);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PDF EXTRACTION
+// ═══════════════════════════════════════════════
+async function extractPdf(file) {
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = async e=>{
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdf = await pdfjsLib.getDocument({data:new Uint8Array(e.target.result)}).promise;
+        let text='';
+        for (let i=1;i<=pdf.numPages;i++) {
+          const page=await pdf.getPage(i), content=await page.getTextContent();
+          const byY={};
+          for (const item of content.items) {
+            if (!item.str.trim()) continue;
+            const y=Math.round(item.transform[5]);
+            if (!byY[y]) byY[y]=[];
+            byY[y].push({x:item.transform[4],str:item.str});
+          }
+          const ys=Object.keys(byY).map(Number).sort((a,b)=>b-a);
+          for (const y of ys) { const row=byY[y].sort((a,b)=>a.x-b.x); text+=row.map(r=>r.str).join(' ').trim()+'\n'; }
+          text+='\n';
+        }
+        resolve(text);
+      } catch(e){reject(e);}
+    };
+    reader.onerror=reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  DOCX EXTRACTION
+// ═══════════════════════════════════════════════
+async function extractDocx(file) {
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload = async e=>{
+      try {
+        const arrayBuffer=e.target.result;
+        const html=await mammoth.convertToHtml({arrayBuffer},{styleMap:['b => strong','i => em']});
+        const dom=new DOMParser().parseFromString(html.value,'text/html');
+        const paras=[];
+
+        // ── Collect ALL text-bearing nodes in document order ──
+        // Include td/th so Word table-based header boxes get extracted.
+        // For td/th: skip if they contain p/li (avoid double-counting).
+        dom.body.querySelectorAll('p,li,hr,td,th').forEach(node=>{
+          const tag=node.nodeName;
+
+          // HR → section separator
+          if (tag==='HR') {
+            paras.push({fullText:'__HR__', boldText:'', isSep:true});
+            return;
+          }
+
+          // TD/TH: only process if no nested p/li (they'll appear separately)
+          if ((tag==='TD'||tag==='TH') && node.querySelector('p,li')) return;
+
+          const fullText=(node.textContent||'').trim();
+          if (!fullText) return;
+
+          // Detect Word "horizontal rule paragraph" → empty or ——— style separators
+          if (isSeparatorLine(fullText)) {
+            paras.push({fullText:'__HR__', boldText:'', isSep:true});
+            return;
+          }
+
+          let boldParts=[];
+          node.childNodes.forEach(child=>{
+            const t=(child.textContent||'').trim();
+            if (!t) return;
+            const isBold=child.nodeName==='STRONG'||child.nodeName==='B'||
+              (child.querySelector&&child.querySelector('strong,b'));
+            if (isBold) boldParts.push(t);
+          });
+          paras.push({fullText, boldText:boldParts.join(' ').trim()});
+        });
+
+        docxParagraphs=paras;
+        resolve(paras.filter(p=>!p.isSep).map(p=>p.fullText).join('\n'));
+      } catch(err) {
+        try {
+          const r2=await mammoth.extractRawText({arrayBuffer:e.target.result});
+          docxParagraphs=[]; resolve(r2.value);
+        } catch(e2){reject(e2);}
+      }
+    };
+    reader.onerror=reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Detecta líneas que son separadores de sección en el DOCX
+// (palabras clave de encabezado de orden de producción que no son ítems)
+function isSeparatorLine(s) {
+  if (!s) return false;
+  // Líneas puramente decorativas: guiones, subrayados, asteriscos
+  if (/^[-–—_*=]{3,}$/.test(s.trim())) return true;
+  // Palabras clave de bloque de encabezado que indican inicio de nueva sección
+  // "Orden de Producción" junto con fecha → es el bloque header, no un ítem
+  if (/orden\s+de\s+producci[oó]n/i.test(s)) return true;
+  return false;
+}
+
+// ═══════════════════════════════════════════════
+//  PARSE PACKAGES
+//
+//  v9 Area-Map driven algorithm:
+//
+//  Scans each paragraph. If a line matches a user-defined
+//  area name (or looks like a section header by heuristic),
+//  it becomes the "current area context". All product lines
+//  that follow inherit that area's material from areaMap.
+// ═══════════════════════════════════════════════
+function parsePackages(text, areaOvr, projectOvr, materialOvr) {
+  const paras = docxParagraphs.length > 0
+    ? docxParagraphs
+    : text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l).map(ft=>({fullText:ft,boldText:''}));
+  return parseDocxParagraphs(paras, areaOvr, projectOvr, materialOvr);
+}
+
+function parseDocxParagraphs(paragraphs, areaOvr, projectOvr, materialOvr) {
+  const results=[];
+  let id=1;
+  let currentArea     = areaOvr     || '';
+  let currentMaterial = materialOvr || '';
+
+  for (const para of paragraphs) {
+    const {fullText, boldText} = para;
+
+    // ── Section separator (HR) — reset material, keep area ───
+    if (para.isSep || fullText==='__HR__') {
+      currentMaterial = materialOvr || '';
+      continue;
+    }
+
+    if (!fullText||fullText.length<2) continue;
+
+    // ── Header detection ──────────────────────────────────────
+    const header = detectHeader(fullText);
+    if (header.matched) {
+      if (header.type==='material') {
+        // Material-only header: update material, keep location area
+        currentMaterial = header.material;
+      } else {
+        // Location / areaMap area header
+        currentArea     = header.area;
+        currentMaterial = header.material || materialOvr || '';
+      }
+      continue;
+    }
+
+    // ── Product line: must start with "qty –" ─────────────────
+    const lineMatch = fullText.match(/^(\d+)\s*[-–—]\s*(.+)$/s);
+    if (!lineMatch) continue;
+
+    const qty = lineMatch[1].trim();   // ← capturar cantidad
+    let rest  = lineMatch[2].trim();
+
+    // ── Inline UBICACIÓN from bold suffix ─────────────────────
+    let inlineUbi='';
+    if (boldText) {
+      const bc = boldText.replace(/^[–—\s-]+/,'').trim();
+      const lm = bc.match(/(ba[ñn]o[\s\w#]*|wic[\s\w]+|dorm[\s#\d]+|visitas|principal|compartido|cocina|closet[\s\w]+|cuarto[\s\w]*|sala[\s\w]*|comedor[\s\w]*|dormitorio[\s\w]*|habitaci[oó]n[\s\w]*|rec[aá]mara[\s\w]*|oficina[\s\w]*|lavander[\s\w]*|terraza[\s\w]*|pasillo[\s\w]*|garage[\s\w]*|bodega[\s\w]*|master[\s\w]*)/i);
+      if (lm) {
+        const start = bc.toLowerCase().indexOf(lm[0].toLowerCase());
+        inlineUbi = bc.slice(start).trim();
+        const esc = bc.slice(start).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        rest = rest.replace(new RegExp('\\s*[-–—]?\\s*'+esc+'\\s*$','i'),'').trim();
+      }
+    }
+
+    // ── Segmentación: misma lógica que buildPackageFromPara ──────
+    // Fila 1=qty+nombre | Fila 2=refs/medidas | resto IGNORADO
+    let nombre='', dims='';
+    const allSegs2 = rest.split(/\s*[-–—]\s*/);
+    nombre = allSegs2[0].trim();
+
+    // Prioridad 1: paréntesis al final  (Formato B)
+    const parenSuffix2 = nombre.match(/^(.+?)\s+(\([^)]+\))$/);
+    if (parenSuffix2 && parenSuffix2[1].trim().length >= 2) {
+      nombre = parenSuffix2[1].trim();
+      dims   = parenSuffix2[2].trim();
+    // Prioridad 2: dimensión embebida sin guión  (Formato C) — solo si nombre empieza con letra
+    } else if (/^\D/.test(nombre)) {
+      const embDim2 = nombre.match(/^(\D.*?)\s+(\d.+)$/);
+      if (embDim2 && embDim2[1].trim().length >= 1) {
+        nombre = embDim2[1].trim();
+        dims   = embDim2[2].trim();
+      } else {
+        dims = allSegs2[1] ? allSegs2[1].trim() : '';
+      }
+    } else {
+      // Formato A: nombre empieza con dígito → segundo segmento es Fila 2
+      dims = allSegs2[1] ? allSegs2[1].trim() : '';
+    }
+    // allSegs2[2+] siempre ignorados
+
+    if (!nombre||nombre.length<2) continue;
+
+    // ── Resolve MATERIAL ──────────────────────────────────────
+    const mat = (resolveAreaMaterial(currentArea)||currentMaterial||'').toUpperCase();
+
+    // ── Resolve UBICACIÓN ─────────────────────────────────────
+    const ubi = (inlineUbi||currentArea||'').toUpperCase();
+    const prj = (projectOvr||'').toUpperCase();
+
+    // ── Resolve COLOR (area o material, el que tenga color) ───
+    const areaColor = resolveAreaColor(currentArea) || resolveAreaColor(currentMaterial);
+
+    // ── Build label lines ─────────────────────────────────────
+    // Orden fijo: F1=qty+nombre, F2=dims, F3=color(mat), F4=proyecto, F5=area
+    const lines=[];
+    const titleFull2 = qty + ' \u2014 ' + normalizeFractions(nombre).toUpperCase();
+    splitLongLine(titleFull2, 28).forEach(l => lines.push(l));
+    const d=normalizeFractions(dims);
+    if (d) splitLongLine(d.toUpperCase(), 30).forEach(l => lines.push(l));
+    if (mat) splitLongLine(mat, 30).forEach(l => lines.push(l));   // Fila 3: color
+    if (prj) splitLongLine(prj, 30).forEach(l => lines.push(l));   // Fila 4: proyecto
+    if (ubi) splitLongLine(ubi, 30).forEach(l => lines.push(l));   // Fila 5: area
+
+    results.push({id, lines: lines.slice(0,5), areaColor, isManual:false});
+    id++;
+  }
+
+  if (results.length===0) return parseByBlocks(paragraphs.filter(p=>!p.isSep).map(p=>p.fullText).join('\n'),areaOvr,projectOvr,materialOvr);
+  return results;
+}
+
+function detectHeader(text) {
+  const t=text.trim();
+  // 1. Check areaMap entries (user-defined areas)
+  for (const row of areaMap) {
+    if (!row.area) continue;
+    if (t.toLowerCase().includes(row.area.toLowerCase()))
+      return {matched:true, type:'area', area:row.area, material:row.material||''};
+  }
+  // 2. Material-like text: "BLANCO 5/8", "ROBLE ROMANCE 3/4", etc.
+  //    Detected automatically — updates material only, preserves current area
+  if (isMaterialText(t) && !/^\d+\s*[-–—]/.test(t))
+    return {matched:true, type:'material', area:t, material:t};
+  // 3. Location keyword heuristic (COCINA, BAÑO, DORM, etc.)
+  if (!/^\d/.test(t) && !/\s*[-–—]\s*/.test(t) && t.length<40 && isLocationText(t))
+    return {matched:true, type:'area', area:t, material:resolveAreaMaterial(t)};
+  return {matched:false};
+}
+
+function isMaterialText(s) {
+  if (!s||s.length<3||s.length>55) return false;
+  // Contains wood-fraction pattern: 5/8, 3/4, 1/2, 3mm, etc.
+  if (/\b\d\/\d\b|\b\d+\s*mm\b/i.test(s)) return true;
+  // Known material keywords
+  if (/(blanco|roble|cedro|nogal|pino|mdf|aglomerado|melamina|tablex|marino|natural|wengue|maple|teca|encino|fresno|abedul|acero|alumini|cristal|vidrio|granito|cuarzo|m[aá]rmol)/i.test(s)) return true;
+  return false;
+}
+
+function isLocationText(s) {
+  if (!s||s.length<3) return false;
+  return /(ba[ñn]o|cocina|wic|dorm|closet|cuarto|sala|comedor|oficina|lavander|rec[aá]mara|dormitorio|habitaci[oó]n|terraza|pasillo|garage|bodega|master|visitas|principal|compartido)/i.test(s)||
+         /dorm\s*#?\s*\d/i.test(s);
+}
+function startsWithDimension(s) { return /^\s*\d/.test(s); }
+function normalizeFractions(s) {
+  if (!s) return s;
+  return s.replace(/½/g,'1/2').replace(/¼/g,'1/4').replace(/¾/g,'3/4')
+    .replace(/⅓/g,'1/3').replace(/⅔/g,'2/3').replace(/⅛/g,'1/8')
+    .replace(/⅜/g,'3/8').replace(/⅝/g,'5/8').replace(/⅞/g,'7/8');
+}
+function parseByBlocks(text,areaOvr,projectOvr,materialOvr) {
+  const blocks=text.split(/\n\s*\n/).map(b=>b.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>=2)).filter(b=>b.length>0);
+  let id=1;
+  return blocks.map(block=>{
+    const lines=[...block];
+    if (projectOvr&&!lines.some(l=>l.toLowerCase().includes(projectOvr.toLowerCase()))) lines.push(projectOvr);
+    if (areaOvr&&!lines.some(l=>l.toLowerCase().includes(areaOvr.toLowerCase())))       lines.push(areaOvr);
+    if (materialOvr&&!lines.some(l=>l.toLowerCase().includes(materialOvr.toLowerCase()))) lines.push(materialOvr);
+    return {id:id++, lines, isManual:false};
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  TEXT ENTRY — etiquetas por línea sin archivo
+// ═══════════════════════════════════════════════
+function parseTextLine(raw) {
+  // Supports: NOMBRE | DIM | MATERIAL | UBICACION
+  const parts = raw.split('|').map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  const lines = [];
+  if (parts[0]) lines.push(parts[0].toUpperCase());
+  if (parts[1]) lines.push(parts[1].toUpperCase());
+  if (parts[2]) lines.push(parts[2].toUpperCase());
+  if (parts[3]) lines.push(parts[3].toUpperCase());
+  return lines;
+}
+
+function getTextLines() {
+  const raw = (document.getElementById('textEntryInput').value||'');
+  return raw.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>1);
+}
+
+function refreshTextPreview() {
+  const lines = getTextLines();
+  const countEl = document.getElementById('textLineCount');
+  const listEl  = document.getElementById('textPreviewList');
+  const emptyEl = document.getElementById('textPreviewEmpty');
+
+  countEl.textContent = lines.length === 0
+    ? '0 líneas detectadas'
+    : `${lines.length} ${lines.length===1?'etiqueta':'etiquetas'} detectada${lines.length===1?'':'s'}`;
+
+  if (!lines.length) {
+    emptyEl.style.display = ''; listEl.style.display = 'none'; return;
+  }
+  emptyEl.style.display = 'none'; listEl.style.display = '';
+  listEl.innerHTML = '';
+  lines.forEach((line,i)=>{
+    const parsed = parseTextLine(line);
+    const item = document.createElement('div');
+    item.className = 'text-preview-item';
+    item.innerHTML = `
+      <span class="tpi-num">${i+1}</span>
+      <span class="tpi-text">${escHtml(parsed ? parsed.join(' · ') : line)}</span>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function generateFromText() {
+  const lines = getTextLines();
+  if (!lines.length) { toast('Escribe al menos una línea','error'); return; }
+  const qty     = parseInt(document.getElementById('textQty').value)||2;
+  const project = document.getElementById('textProject').value.trim().toUpperCase();
+  let added = 0;
+  lines.forEach(raw => {
+    const parsed = parseTextLine(raw);
+    if (!parsed) return;
+    if (project && !parsed.some(l=>l.includes(project))) parsed.push(project);
+    manualIdCtr++;
+    manualPkgs.push({id:manualIdCtr, lines:parsed, labelsOverride:qty, isManual:true});
+    selectedIds.add(manualIdCtr);
+    added++;
+  });
+  if (!added) { toast('No se pudo parsear ninguna línea','warning'); return; }
+  renderManualQueue(); renderPackagesList(); renderPreview(); updateStats();
+  toast(`✅ ${added} ${added===1?'etiqueta':'etiquetas'} generada${added===1?'':'s'} y agregada${added===1?'':'s'} al lote`,'success');
+  document.getElementById('textEntryInput').value='';
+  refreshTextPreview();
+  switchTab('preview', document.querySelectorAll('.tab-btn')[1]);
+}
+
+function clearTextEntry() {
+  document.getElementById('textEntryInput').value='';
+  refreshTextPreview();
+}
+
+// ═══════════════════════════════════════════════
+//  LABEL FIELD DEFINITIONS (5 slots semánticos)
+// ═══════════════════════════════════════════════
+const LABEL_FIELDS = [
+  { icon:'🔢', label:'Cant. + Nombre',  placeholder:'2 PUERTAS ER+C4S'       },
+  { icon:'📏', label:'Medidas',          placeholder:'28 7/8 X 11 1/2'        },
+  { icon:'🎨', label:'Color / Material', placeholder:'ROBLE AURORA 5/8'       },
+  { icon:'🏗️', label:'Proyecto',         placeholder:'ZORZALES DE MERENDON'   },
+  { icon:'📍', label:'Área',             placeholder:'APTO 601 JG-FL'         },
+];
+
+// ═══════════════════════════════════════════════
+//  BOLD CONFIG HELPERS
+// ═══════════════════════════════════════════════
+function getTitleBold() {
+  return (document.querySelector('input[name="titleWeight"]:checked')?.value||'bold')==='bold';
+}
+function getBodyBold() {
+  return (document.querySelector('input[name="bodyWeight"]:checked')?.value||'normal')==='bold';
+}
+
+// ═══════════════════════════════════════════════
+//  MANUAL BUILDER — 5 campos semánticos fijos
+// ═══════════════════════════════════════════════
+function initManualBuilder() {
+  // Los inputs mf0-mf4 ya están en el HTML, solo refrescamos preview
+  ['mf0','mf1','mf2','mf3','mf4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', refreshManualPreview);
+  });
+  refreshManualPreview();
+}
+
+function getManualLines() {
+  return ['mf0','mf1','mf2','mf3','mf4']
+    .map(id => (document.getElementById(id)?.value||'').trim().toUpperCase())
+    .map(v => v); // mantener slots vacíos para preservar posición semántica
+}
+
+function refreshManualPreview() {
+  const lines = getManualLines();
+  const card  = document.getElementById('manualPreviewCard');
+  card.innerHTML = buildLabelCardHTML(lines);
+}
+
+function addManualLabel() {
+  const lines = getManualLines();
+  const hasContent = lines.some(l => l.length > 0);
+  if (!hasContent) { toast('Completa al menos un campo','error'); return; }
+  const qty    = parseInt(document.getElementById('manualQty').value)||2;
+  const copies = parseInt(document.getElementById('manualCopies').value)||1;
+  for (let c=0;c<copies;c++) {
+    manualIdCtr++;
+    manualPkgs.push({id:manualIdCtr, lines:[...lines], labelsOverride:qty, isManual:true});
+    selectedIds.add(manualIdCtr);
+  }
+  renderManualQueue(); renderPackagesList(); renderPreview(); updateStats();
+  toast(`✅ ${copies===1?'Etiqueta añadida':copies+' copias'} al lote`,'success');
+  ['mf0','mf1','mf2','mf3','mf4'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  refreshManualPreview();
+}
+
+// Mantener addManualLine como no-op por si algo lo llama (legacy)
+function addManualLine(value='') {}
+function removeManualLine()       {}
+function renumberManualLines()    {}
+
+function renderManualQueue() {
+  const qEl=document.getElementById('manualQueue');
+  const eEl=document.getElementById('manualQueueEmpty');
+  if (!manualPkgs.length) { eEl.style.display=''; qEl.style.display='none'; return; }
+  eEl.style.display='none'; qEl.style.display=''; qEl.innerHTML='';
+  manualPkgs.forEach(pkg=>{
+    const el=document.createElement('div');
+    el.className='manual-queue-item';
+    el.innerHTML=`
+      <span class="mq-name">${escHtml(pkg.lines[0]||'(sin título)')}</span>
+      <span class="mq-count">${pkg.lines.length} líneas · ${pkg.labelsOverride||labelsCfg.labelsPerPkg} etiq.</span>
+      <button class="btn btn-ghost btn-sm" onclick="deleteManualPkg(${pkg.id})">✕</button>
+    `;
+    qEl.appendChild(el);
+  });
+}
+function deleteManualPkg(id) {
+  manualPkgs=manualPkgs.filter(p=>p.id!==id);
+  selectedIds.delete(id);
+  renderManualQueue(); renderPackagesList(); renderPreview(); updateStats();
+}
+function clearManualQueue() {
+  if (!manualPkgs.length) return;
+  if (!confirm('¿Limpiar todas las etiquetas manuales?')) return;
+  manualPkgs.forEach(p=>selectedIds.delete(p.id));
+  manualPkgs=[];
+  renderManualQueue(); renderPackagesList(); renderPreview(); updateStats();
+  toast('Etiquetas manuales eliminadas','info');
+}
+async function printManualOnly() {
+  if (!manualPkgs.length) { toast('No hay etiquetas manuales','error'); return; }
+  await executePrint(manualPkgs);
+}
+function getAllPackages() { return [...packages,...manualPkgs]; }
+
+// ═══════════════════════════════════════════════
+//  RENDER PACKAGES LIST
+// ═══════════════════════════════════════════════
+function renderPackagesList() {
+  const list=document.getElementById('itemsList');
+  const filtered=getFilteredPackages();
+  list.innerHTML='';
+  if (!filtered.length) {
+    document.getElementById('packagesEmpty').style.display   ='';
+    document.getElementById('packagesContent').style.display ='none'; return;
+  }
+  document.getElementById('packagesEmpty').style.display  ='none';
+  document.getElementById('packagesContent').style.display='';
+  filtered.forEach(pkg=>{
+    const title  =pkg.lines[0]||'(sin título)';
+    const details=pkg.lines.slice(1).join(' · ');
+    const isMan  =pkg.isManual;
+    const qty    =pkg.labelsOverride ?? labelsCfg.labelsPerPkg;
+    const isCustom = pkg.labelsOverride != null && pkg.labelsOverride !== labelsCfg.labelsPerPkg;
+    const item=document.createElement('div');
+    item.className='pkg-item'+(selectedIds.has(pkg.id)?' selected':'')+(isMan?' manual':'');
+    item.innerHTML=`
+      <input type="checkbox" ${selectedIds.has(pkg.id)?'checked':''} />
+      <div class="pkg-badge ${isMan?'manual-badge':''}">${isMan?'✏️':pkg.id}</div>
+      <div class="pkg-info">
+        <div class="pkg-name">${escHtml(title)}</div>
+        <div class="pkg-meta">${escHtml(details)}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openEditModal(${pkg.id},event)" title="Editar contenido">✏️</button>
+      <div class="pkg-qty-wrap${isCustom?' pkg-qty-custom':''}" title="Cantidad de etiquetas para este ítem">
+        <button class="pkg-qty-btn pkg-qty-dec" data-id="${pkg.id}" tabindex="-1">−</button>
+        <input  class="pkg-qty-inp" type="number" min="1" max="99" value="${qty}" data-id="${pkg.id}" title="Etiquetas para este ítem" />
+        <button class="pkg-qty-btn pkg-qty-inc" data-id="${pkg.id}" tabindex="-1">+</button>
+        <span   class="pkg-qty-lbl">🏷️</span>
+      </div>
+    `;
+    // Checkbox
+    item.querySelector('input[type="checkbox"]').addEventListener('change',e=>togglePkg(pkg.id,e.target));
+    // Qty input
+    const qtyInp = item.querySelector('.pkg-qty-inp');
+    const wrap   = item.querySelector('.pkg-qty-wrap');
+    const updateQty = (val) => {
+      const v = Math.max(1, Math.min(99, parseInt(val)||1));
+      qtyInp.value = v;
+      pkg.labelsOverride = v;
+      wrap.classList.toggle('pkg-qty-custom', v !== labelsCfg.labelsPerPkg);
+      updateStats(); renderPreview();
+    };
+    qtyInp.addEventListener('change', e => updateQty(e.target.value));
+    qtyInp.addEventListener('click',  e => e.stopPropagation());
+    item.querySelector('.pkg-qty-dec').addEventListener('click', e => { e.stopPropagation(); updateQty(parseInt(qtyInp.value)-1); });
+    item.querySelector('.pkg-qty-inc').addEventListener('click', e => { e.stopPropagation(); updateQty(parseInt(qtyInp.value)+1); });
+    list.appendChild(item);
+  });
+  updateSelectedCount();
+}
+function resetAllQty() {
+  getAllPackages().forEach(p => { delete p.labelsOverride; });
+  renderPackagesList(); renderPreview(); updateStats();
+  toast('Cantidades restablecidas al predeterminado','info');
+}
+function togglePkg(id,cb) {
+  if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+  document.querySelectorAll('.pkg-item').forEach(item=>{
+    item.classList.toggle('selected',item.querySelector('input[type="checkbox"]').checked);
+  });
+  updateSelectedCount(); renderPreview();
+}
+function toggleAll(cb) {
+  const fil=getFilteredPackages();
+  if (cb.checked) fil.forEach(p=>selectedIds.add(p.id));
+  else            fil.forEach(p=>selectedIds.delete(p.id));
+  renderPackagesList(); renderPreview();
+}
+function updateSelectedCount() {
+  const sel = getAllPackages().filter(p=>selectedIds.has(p.id));
+  document.getElementById('selectedCount').textContent=`${sel.length} seleccionados`;
+  const totalLbls = sel.reduce((s,p)=>s+(p.labelsOverride ?? labelsCfg.labelsPerPkg),0);
+  const el = document.getElementById('totalLabelCount');
+  if (el) el.textContent = totalLbls ? `🏷️ ${totalLbls} etiquetas totales` : '';
+  const fil=getFilteredPackages();
+  document.getElementById('checkAll').checked=fil.length>0&&fil.every(p=>selectedIds.has(p.id));
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER 2-UP PREVIEW
+// ═══════════════════════════════════════════════
+function renderPreview() {
+  const roll=document.getElementById('previewRoll');
+  const sel=getAllPackages().filter(p=>selectedIds.has(p.id));
+  roll.innerHTML='';
+  if (!sel.length) {
+    document.getElementById('previewEmpty').style.display  ='';
+    document.getElementById('previewContent').style.display='none';
+    renderQueue=[];
+    document.getElementById('renderPageInfo').textContent='— / —';
+    return;
+  }
+  document.getElementById('previewEmpty').style.display  ='none';
+  document.getElementById('previewContent').style.display='';
+  sel.forEach(pkg=>{
+    const qty=pkg.labelsOverride||labelsCfg.labelsPerPkg;
+    for (let r=0;r<Math.ceil(qty/2);r++) {
+      const rowEl=document.createElement('div');
+      rowEl.className='preview-row';
+      rowEl.appendChild(createLabelCard(pkg,true));
+      rowEl.appendChild(createLabelCard(pkg,false));
+      roll.appendChild(rowEl);
+    }
+  });
+  // Si render tab activo, re-renderizar automáticamente
+  if (document.getElementById('tab-render').classList.contains('active')) {
+    renderQueue = sel;
+    if (renderIndex >= sel.length) renderIndex = 0;
+    renderFrame();
+  } else {
+    // Actualizar queue silenciosamente para cuando el usuario abra el tab
+    renderQueue = sel;
+    if (renderIndex >= sel.length) renderIndex = 0;
+  }
+}
+// ═══════════════════════════════════════════════
+//  SHARED LABEL CARD HTML BUILDER
+//  Usa los toggles Bold para title y body
+// ═══════════════════════════════════════════════
+function buildLabelCardHTML(lines) {
+  const titleBold = getTitleBold();
+  const bodyBold  = getBodyBold();
+  const FONT = '"Inter","Helvetica Neue",Arial,sans-serif';
+
+  // Estilos inline para inmunidad al print override
+  const ST = [
+    `font-family:${FONT}`,
+    'font-size:11px',
+    `font-weight:${titleBold?'800':'500'}`,
+    'line-height:1.25','color:#000','text-transform:uppercase',
+    'letter-spacing:0.4px','word-break:break-word','overflow-wrap:break-word',
+    'white-space:normal','width:100%','text-align:center','display:block','margin-bottom:2px'
+  ].join(';');
+
+  const SB = [
+    `font-family:${FONT}`,
+    'font-size:7.5px',
+    `font-weight:${bodyBold?'700':'400'}`,
+    'line-height:1.4',`color:${bodyBold?'#222':'#444'}`,
+    'text-transform:uppercase','letter-spacing:0.2px',
+    'word-break:break-word','overflow-wrap:break-word',
+    'white-space:normal','width:100%','text-align:center','display:block','margin-top:1px'
+  ].join(';');
+
+  const SEP = 'width:55%;height:1px;background:#ccc;border:none;margin:3px auto 4px;display:block;';
+
+  // Filtrar slots vacíos para el display, pero siempre mostrar título aunque vacío
+  const display = lines.slice(0,5);
+  let html = '';
+  let sepDone = false;
+  display.forEach((line, i) => {
+    if (!line) return; // skip empty slots en la tarjeta
+    if (i > 0 && !sepDone) { html += `<hr style="${SEP}" />`; sepDone = true; }
+    html += `<span style="${i===0?ST:SB}">${escHtml(line)}</span>`;
+  });
+  return html || '<span style="color:#aaa;font-size:10px;">Vista previa...</span>';
+}
+
+function createLabelCard(pkg,clickable=false) {
+  const el=document.createElement('div');
+  el.className='label-card';
+  let html='<span class="lc-edit-hint">✏️ editar</span>';
+  if (pkg.areaColor) html+=`<div class="lc-bar" style="background:${pkg.areaColor};"></div>`;
+  html += buildLabelCardHTML(pkg.lines||[]);
+  el.innerHTML=html;
+  if (clickable) { el.title='Haz clic para editar'; el.addEventListener('click',()=>openEditModal(pkg.id)); }
+  return el;
+}
+
+// ═══════════════════════════════════════════════
+//  TSPL 2-UP GENERATION
+// ═══════════════════════════════════════════════
+function readConfig() {
+  labelsCfg.labelsPerPkg=parseInt(document.getElementById('labelsPerPkg').value)||2;
+  labelsCfg.dpi         =parseInt(document.getElementById('dpiSelect').value)   ||203;
+  labelsCfg.labelW_mm   =parseFloat(document.getElementById('cfgLabelW').value) ||50;
+  labelsCfg.labelH_mm   =parseFloat(document.getElementById('cfgLabelH').value) ||25;
+  labelsCfg.colGap_mm   =parseFloat(document.getElementById('cfgColGap').value) ||0;
+  labelsCfg.fontTitle   =document.getElementById('cfgFontTitle')?.value||'3';
+  labelsCfg.fontBody    =document.getElementById('cfgFontBody')?.value||'1';
+  labelsCfg.titleBold   =getTitleBold();
+  labelsCfg.bodyBold    =getBodyBold();
+}
+function generateTsplTwoUp(pkgList) {
+  readConfig();
+  const dpi=labelsCfg.dpi, dpm=dpi/25.4;
+  const lw=Math.round(labelsCfg.labelW_mm*dpm), lh=Math.round(labelsCfg.labelH_mm*dpm);
+  const hgap=Math.round(labelsCfg.colGap_mm*dpm), vgap=Math.round(3*dpm);
+  const rollW=lw*2+hgap;
+  let code=`; INTERIORS — Generador de Etiquetas v13 (2-UP)\n`;
+  code+=`; DPI:${dpi} | Label:${labelsCfg.labelW_mm}x${labelsCfg.labelH_mm}mm | Fuente titulo=3 cuerpo=1\n`;
+  code+=`; ${new Date().toLocaleString('es-MX')}\n\n`;
+  // SIZE en mm para máxima compatibilidad con TSC TE200
+  // GAP: separación entre etiquetas en el rollo (3mm por defecto)
+  const rollW_mm = labelsCfg.labelW_mm * 2 + labelsCfg.colGap_mm;
+  const gap_mm   = 3; // gap físico entre etiquetas del rollo
+  code+=`SIZE ${rollW_mm} mm, ${labelsCfg.labelH_mm} mm\nGAP ${gap_mm} mm, 0 mm\nDIRECTION 0\nREFERENCE 0,0\nOFFSET 0\nSET PEEL OFF\nSET CUTTER OFF\n\n`;
+  pkgList.forEach((pkg,idx)=>{
+    const qty=pkg.labelsOverride||labelsCfg.labelsPerPkg;
+    code+=`; ─── ${idx+1}: ${(pkg.lines[0]||'').substring(0,30)} ───\nCLS\n`;
+    code+=buildLabelTspl(pkg,0,         lw,lh,dpi,dpm);
+    code+=buildLabelTspl(pkg,lw+hgap,   lw,lh,dpi,dpm);
+    code+=`PRINT ${Math.ceil(qty/2)}, 1\n\n`;
+  });
+  return code;
+}
+function buildLabelTspl(pkg,xOff,lw,lh,dpi,dpm) {
+  const lines=(pkg.lines||[]).slice(0,5);
+  if (!lines.length) return '';
+  const is300=(dpi===300);
+
+  // ── Tabla de fuentes internas TSC ─────────────────────────────
+  // Métricas exactas bitmap @ 203dpi (doblar para 300dpi aprox):
+  //   id  cw   ch   descripción
+  //   "1"  8   12   la más pequeña — cuerpo ligero
+  //   "2" 12   20   mediana
+  //   "3" 16   24   grande — buen título
+  //   "4" 24   32   muy grande
+  //   "5" 32   48   máxima
+  const TSC_FONT_METRICS = {
+    '1': { cw: is300?12: 8, ch: is300?16:12 },
+    '2': { cw: is300?18:12, ch: is300?30:20 },
+    '3': { cw: is300?24:16, ch: is300?36:24 },
+    '4': { cw: is300?36:24, ch: is300?48:32 },
+    '5': { cw: is300?48:32, ch: is300?72:48 },
+  };
+  const titleFontId = labelsCfg.fontTitle || '3';
+  const bodyFontId  = labelsCfg.fontBody  || '1';
+  const FONTS = {
+    title: { id: titleFontId, ...TSC_FONT_METRICS[titleFontId] },
+    body:  { id: bodyFontId,  ...TSC_FONT_METRICS[bodyFontId]  },
+  };
+
+  // Margen interno por etiqueta (dots) — 4mm para evitar sangrado en borde térmico
+  const marginX = Math.round(4 * dpm);
+  const usableW = lw - marginX * 2;
+
+  // ── Calcular líneas con wrap por carácter disponible ──────────
+  // Margen de seguridad 10%: las fuentes bitmap TSC tienen spacing
+  // inter-carácter implícito que el cw fijo no refleja exactamente.
+  function wrapLine(text, font) {
+    const maxChars = Math.floor((usableW * 0.90) / font.cw);
+    if (text.length <= maxChars) return [text];
+    const words = text.split(' ');
+    const result = [];
+    let cur = '';
+    for (const w of words) {
+      if (!cur) { cur=w; continue; }
+      if ((cur+' '+w).length <= maxChars) { cur+=' '+w; }
+      else { result.push(cur); cur=w; }
+    }
+    if (cur) result.push(cur);
+    return result.length ? result : [text.substring(0,maxChars)];
+  }
+
+  // Expandir líneas con wrap real basado en dots disponibles
+  const expanded = [];
+  lines.forEach((line,i) => {
+    const font = i===0 ? FONTS.title : FONTS.body;
+    wrapLine(sanitizeTspl(line), font).forEach(l => expanded.push({text:l, isTitle:(i===0)}));
+  });
+  const finalLines = expanded.slice(0,6); // máximo 6 sublíneas en la etiqueta física
+
+  // ── Calcular altura total y posición Y inicial centrada ───────
+  const titleH = FONTS.title.ch + 8;   // altura título + padding generoso
+  const bodyH  = FONTS.body.ch  + 6;   // altura cuerpo + padding entre líneas
+  const sepH   = 5;                     // separador visual entre título y cuerpo
+
+  let totalH = 0;
+  let hasSep = false;
+  finalLines.forEach((l,i) => {
+    if (i===0) { totalH += titleH; }
+    else {
+      if (!hasSep && !l.isTitle) { totalH += sepH; hasSep=true; }
+      totalH += bodyH;
+    }
+  });
+
+  let y = Math.max(Math.round(2*dpm), Math.floor((lh - totalH) / 2));
+  let c = '';
+  let sepDrawn = false;
+  // Overflow: si el contenido calculado excede la altura física de la etiqueta
+  if (totalH > lh) {
+    c += `; ⚠️ OVERFLOW: contenido ${totalH}px > altura etiqueta ${lh}px — aumentar Alto en config\n`;
+    buildLabelTspl._lastOverflow = { totalH, lh, pkg: (pkg?.lines?.[0]||'') };
+  } else {
+    buildLabelTspl._lastOverflow = null;
+  }
+
+  finalLines.forEach((l,i) => {
+    const font = l.isTitle ? FONTS.title : FONTS.body;
+    const safe = l.text;
+
+    // Dibujar separador horizontal antes de la primera línea de cuerpo
+    if (!l.isTitle && !sepDrawn) {
+      const barW = Math.round(usableW * 0.5);
+      const bx   = xOff + marginX + Math.floor((usableW - barW)/2);
+      c += `BAR ${bx},${y+1},${barW},1\n`;
+      y += sepH;
+      sepDrawn = true;
+    }
+
+    // Centrar texto horizontalmente — clamp para evitar desbordamiento
+    const textW = safe.length * font.cw;
+    const centerOffset = Math.max(0, Math.floor((usableW - textW) / 2));
+    const tx = xOff + marginX + centerOffset;
+
+    if (l.isTitle) {
+      // TÍTULO: fuente "3" (16×24 @ 203dpi) — grande, prominente
+      c += `TEXT ${tx},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      // Simulación bold: doble impresión offset +1 dot en X
+      if (labelsCfg.titleBold) c += `TEXT ${tx+1},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      y += titleH;
+    } else {
+      // CUERPO: fuente "1" (8×12 @ 203dpi) — pequeña, contraste claro con título
+      c += `TEXT ${tx},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      // Simulación bold en cuerpo si está activado
+      if (labelsCfg.bodyBold) c += `TEXT ${tx+1},${y},"${font.id}",0,1,1,"${safe}"\n`;
+      y += bodyH;
+    }
+  });
+
+  return c;
+}
+function sanitizeTspl(s) {
+  const a={'á':'a','à':'a','ä':'a','â':'a','Á':'A','À':'A','Ä':'A','Â':'A',
+           'é':'e','è':'e','ë':'e','ê':'e','É':'E','È':'E','Ë':'E','Ê':'E',
+           'í':'i','ì':'i','ï':'i','î':'i','Í':'I','Ì':'I','Ï':'I','Î':'I',
+           'ó':'o','ò':'o','ö':'o','ô':'o','Ó':'O','Ò':'O','Ö':'O','Ô':'O',
+           'ú':'u','ù':'u','ü':'u','û':'u','Ú':'U','Ù':'U','Ü':'U','Û':'U',
+           'ñ':'n','Ñ':'N','ç':'c','Ç':'C'};
+  return String(s)
+    .replace(/[áàäâÁÀÄÂéèëêÉÈËÊíìïîÍÌÏÎóòöôÓÒÖÔúùüûÚÙÜÛñÑçÇ]/g,c=>a[c]||c)
+    .replace(/["\\r\n]/g,'')
+    .replace(/[^\x20-\x7E]/g,'');
+}
+
+// ═══════════════════════════════════════════════
+//  PRINT
+// ═══════════════════════════════════════════════
+async function printSelected() {
+  const sel=getAllPackages().filter(p=>selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona al menos un paquete','error'); return; }
+  await executePrint(sel);
+}
+async function executePrint(pkgList) {
+  if (!navigator.usb) { toast('WebUSB no disponible. Usa "Imprimir por navegador".','warning'); return; }
+  if (!usbDevice||!printerReady) {
+    toast('❌ Impresora no conectada.','error');
+    setPrinterUI('error','No detectada','Verifique USB');
+    updatePrinterChip('error','🔴 Sin conexión');
+    document.getElementById('btnConnect').style.display=''; return;
+  }
+  readConfig();
+  const totalLabels=pkgList.reduce((s,p)=>s+(p.labelsOverride||labelsCfg.labelsPerPkg),0);
+  showLoading(true,`Enviando ${pkgList.length} paquetes...`);
+  try {
+    await sendToPrinter(generateTsplTwoUp(pkgList));
+    showLoading(false); saveHistory(pkgList,'ok');
+    toast(`✅ ${pkgList.length} paquetes · ${totalLabels} etiquetas enviadas`,'success');
+  } catch(err) {
+    showLoading(false);
+    if (err.code==='NO_PRINTER'||err.name==='NotFoundError') {
+      toast('❌ Impresora no encontrada.','error');
+      setPrinterUI('error','No detectada','Verifique USB');
+      updatePrinterChip('error','🔴 Sin conexión'); printerReady=false;
+      document.getElementById('btnConnect').style.display='';
+    } else if (err.name==='NetworkError')  toast('❌ Error de red USB. Reconecte el cable.','error');
+    else if   (err.name==='SecurityError') toast('❌ Permiso USB denegado. Reconecte.','error');
+    else toast('❌ Error: '+err.message,'error');
+    saveHistory(pkgList,'error'); console.error('[PRINT]',err);
+  }
+}
+function printBrowserFallback() {
+  const sel = getAllPackages().filter(p => selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona al menos un paquete', 'error'); return; }
+
+  // Construir HTML de etiquetas con estilos 100% inline — inmune a cualquier override
+  let labelRows = '';
+  sel.forEach(pkg => {
+    const qty = pkg.labelsOverride || labelsCfg.labelsPerPkg;
+    const reps = Math.ceil(qty / 2);
+    for (let r = 0; r < reps; r++) {
+      labelRows += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;page-break-inside:avoid;">`;
+      labelRows += buildPrintLabelHTML(pkg);
+      labelRows += buildPrintLabelHTML(pkg);
+      labelRows += `</div>`;
+    }
+  });
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Etiquetas — Impresión</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; font-family:'Inter',Arial,sans-serif; padding:10px; }
+  @media print {
+    body { padding:4px; }
+    @page { margin:6mm; }
+  }
+</style>
+</head><body>
+${labelRows}
+<script>window.onload=function(){ window.print(); }<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function buildPrintLabelHTML(pkg) {
+  const lines    = (pkg.lines || []).slice(0, 5);
+  const tBold    = getTitleBold();
+  const bBold    = getBodyBold();
+  const colorBar = pkg.areaColor
+    ? `<div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:${pkg.areaColor};border-radius:4px 0 0 4px;"></div>`
+    : '';
+  let content = '';
+  let sepDone = false;
+  lines.forEach((line, i) => {
+    if (!line) return;
+    if (i > 0 && !sepDone) {
+      content += `<hr style="width:55%;height:1px;background:#bbb;border:none;margin:3px auto 4px;display:block;" />`;
+      sepDone = true;
+    }
+    if (i === 0) {
+      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:10pt;font-weight:${tBold?'800':'500'};color:#000;text-transform:uppercase;letter-spacing:0.4px;line-height:1.3;word-break:break-word;margin-bottom:2px;">${escHtml(line)}</span>`;
+    } else {
+      content += `<span style="display:block;width:100%;text-align:center;font-family:'Inter','Helvetica Neue',Arial,sans-serif;font-size:7pt;font-weight:${bBold?'700':'400'};color:${bBold?'#111':'#333'};text-transform:uppercase;letter-spacing:0.2px;line-height:1.45;word-break:break-word;margin-top:1px;">${escHtml(line)}</span>`;
+    }
+  });
+  return `<div style="position:relative;background:#fff;border:1px solid #999;border-radius:5px;padding:6px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70px;aspect-ratio:2/1;overflow:hidden;text-align:center;">${colorBar}${content}</div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  EDIT MODAL — 5 campos semánticos
+// ═══════════════════════════════════════════════
+let editingPkgId=null;
+
+function openEditModal(pkgId,event) {
+  if (event) event.stopPropagation();
+  const pkg=getAllPackages().find(p=>p.id===pkgId);
+  if (!pkg) return;
+  editingPkgId=pkgId;
+  // Rellenar los 5 campos semánticos
+  const lines = pkg.lines || [];
+  ['ef0','ef1','ef2','ef3','ef4'].forEach((id,i) => {
+    const el = document.getElementById(id);
+    if (el) el.value = lines[i]||'';
+  });
+  syncModalPreview();
+  const currentQty = pkg.labelsOverride ?? labelsCfg.labelsPerPkg;
+  document.getElementById('modalQtyInp').value = currentQty;
+  modalQtySyncStyle();
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('editModal').classList.remove('open'); editingPkgId=null; }
+
+function getEditLines() {
+  // Devuelve array de 5 slots (incluyendo vacíos para preservar posición semántica)
+  return ['ef0','ef1','ef2','ef3','ef4'].map(id => (document.getElementById(id)?.value||'').trim().toUpperCase());
+}
+
+function syncModalPreview() {
+  const lines = getEditLines();
+  document.getElementById('modalPreviewCard').innerHTML = buildLabelCardHTML(lines);
+}
+
+// Legacy stubs para compatibilidad con código existente
+function renderEditLines()  {}
+function addEditLineRow()   {}
+function addEditLine()      {}
+function removeEditLine()   {}
+function refreshModalPreview() { syncModalPreview(); }
+
+function modalQtyChange(delta) {
+  const inp=document.getElementById('modalQtyInp');
+  inp.value=Math.max(1,Math.min(99,(parseInt(inp.value)||1)+delta));
+  modalQtySyncStyle();
+}
+function modalQtySyncStyle() {
+  const inp=document.getElementById('modalQtyInp');
+  const wrap=document.getElementById('modalQtyWrap');
+  const v=parseInt(inp.value)||1;
+  wrap.classList.toggle('pkg-qty-custom', v !== labelsCfg.labelsPerPkg);
+}
+function saveEditModal() {
+  if (!editingPkgId) return;
+  const lines=getEditLines();
+  if (!lines.some(l=>l.length>0)) { toast('Completa al menos un campo','error'); return; }
+  const pkg=getAllPackages().find(p=>p.id===editingPkgId);
+  if (pkg) {
+    pkg.lines=lines;
+    const newQty=Math.max(1,Math.min(99,parseInt(document.getElementById('modalQtyInp').value)||1));
+    pkg.labelsOverride=newQty;
+    renderPackagesList(); renderPreview(); renderManualQueue(); updateStats();
+    toast('✅ Etiqueta actualizada','success');
+    switchTab('preview',document.querySelectorAll('.tab-btn')[1]);
+  }
+  closeEditModal();
+}
+document.getElementById('editModal').addEventListener('click',function(e){ if(e.target===this) closeEditModal(); });
+
+// ═══════════════════════════════════════════════
+//  HISTORY
+// ═══════════════════════════════════════════════
+function saveHistory(pkgList,status) {
+  const entry={
+    id:Date.now(), date:new Date().toLocaleString('es-MX'),
+    project:document.getElementById('cfgProject').value||'—',
+    packages:pkgList.length,
+    labels:pkgList.reduce((s,p)=>s+(p.labelsOverride||labelsCfg.labelsPerPkg),0),
+    status, pkgData:pkgList
+  };
+  history.unshift(entry);
+  if (history.length>50) history=history.slice(0,50);
+  localStorage.setItem('etiquetas_history',JSON.stringify(history));
+  updateStats(); renderHistory();
+}
+function renderHistory() {
+  const body=document.getElementById('historyBody');
+  body.innerHTML='';
+  if (!history.length) {
+    document.getElementById('historyEmpty').style.display  ='';
+    document.getElementById('historyContent').style.display='none'; return;
+  }
+  document.getElementById('historyEmpty').style.display  ='none';
+  document.getElementById('historyContent').style.display='';
+  history.forEach(entry=>{
+    const sb=entry.status==='ok'?'<span class="badge badge-green">✓ OK</span>':'<span class="badge badge-red">✕ Error</span>';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${entry.date}</td><td>${escHtml(entry.project)}</td>
+      <td><span class="badge badge-blue">${entry.packages}</span></td>
+      <td><span class="badge badge-green">${entry.labels}</span></td>
+      <td>${sb}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="reprint(${entry.id})">🔄 Reimprimir</button></td>`;
+    body.appendChild(tr);
+  });
+}
+function reprint(id) {
+  const entry=history.find(h=>h.id===id);
+  if (!entry) return;
+  packages   =entry.pkgData.filter(p=>!p.isManual);
+  manualPkgs =entry.pkgData.filter(p=> p.isManual);
+  selectedIds=new Set(entry.pkgData.map(p=>p.id));
+  readConfig(); renderPackagesList(); renderPreview(); renderManualQueue(); updateStats();
+  switchTab('preview',document.querySelectorAll('.tab-btn')[1]);
+  toast(`${entry.packages} paquetes cargados. Revisa y usa "Enviar USB".`,'info');
+}
+function clearHistory() {
+  if (!confirm('¿Limpiar todo el historial?')) return;
+  history=[]; localStorage.removeItem('etiquetas_history');
+  renderHistory(); updateStats(); toast('Historial limpiado','success');
+}
+
+// ═══════════════════════════════════════════════
+//  FILTERS + STATS + TABS + HELPERS
+// ═══════════════════════════════════════════════
+function getFilteredPackages() {
+  const text=(document.getElementById('filterText')?.value||'').toLowerCase();
+  return getAllPackages().filter(p=>!text||p.lines.some(l=>l.toLowerCase().includes(text)));
+}
+function applyFilters() { renderPackagesList(); }
+function updateStats() {
+  const all=getAllPackages();
+  const total=all.reduce((s,p)=>s+(p.labelsOverride||labelsCfg.labelsPerPkg),0);
+  document.getElementById('stat-pkgs').textContent  =all.length;
+  document.getElementById('stat-labels').textContent=total;
+  const today=new Date().toLocaleDateString('es-MX');
+  const tc=history.filter(h=>h.date.startsWith(today)&&h.status==='ok').reduce((s,h)=>s+h.labels,0);
+  document.getElementById('stat-printed').textContent=tc;
+}
+function switchTab(name,btn) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  // Auto-render si se abre el tab de render y hay paquetes en cola
+  if (name==='render') {
+    const sel=getAllPackages().filter(p=>selectedIds.has(p.id));
+    if (sel.length) {
+      renderQueue=sel;
+      if(renderIndex>=sel.length) renderIndex=0;
+      renderFrame();
+    }
+  }
+}
+function showLoading(show,msg='') {
+  document.getElementById('loadingBar').style.display=show?'':'none';
+  if (msg) document.getElementById('loadingMsg').textContent=msg;
+}
+function toast(msg,type='info') {
+  const el=document.getElementById('toast');
+  const icons={success:'✅',error:'❌',info:'ℹ️',warning:'⚠️'};
+  el.textContent=(icons[type]||'')+' '+msg;
+  el.className=`toast ${type} show`;
+  clearTimeout(el._to);
+  el._to=setTimeout(()=>el.classList.remove('show'),4500);
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ═══════════════════════════════════════════════
+//  TSPL CANVAS RENDERER (v13)
+//  Parsea los comandos TEXT y BAR generados y los
+//  dibuja en un <canvas> a escala real en mm.
+// ═══════════════════════════════════════════════
+
+// Métricas de fuente para canvas (px en canvas a 96dpi equivalente)
+// Mapeamos las fuentes TSC bitmap a tamaños de fuente de canvas
+// proporcionales, usando fuente monospace para máxima fidelidad.
+const CANVAS_FONT_PX = { '1':10, '2':14, '3':20, '4':28, '5':40 };
+
+let renderQueue   = [];  // array de paquetes a renderizar
+let renderIndex   = 0;   // índice actual en renderQueue
+
+function parseTsplCommands(tsplCode) {
+  // Devuelve array de objetos {type, ...props}
+  const cmds = [];
+  for (const raw of tsplCode.split('\n')) {
+    const line = raw.trim();
+    // TEXT x,y,"font",rotation,xmul,ymul,"text"
+    const tm = line.match(/^TEXT\s+(\d+)\s*,\s*(\d+)\s*,\s*"([^"]+)"\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*"([^"]*)"/i);
+    if (tm) {
+      cmds.push({ type:'TEXT', x:+tm[1], y:+tm[2], font:tm[3], rot:+tm[4], xm:+tm[5], ym:+tm[6], text:tm[7] });
+      continue;
+    }
+    // BAR x,y,width,height
+    const bm = line.match(/^BAR\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (bm) {
+      cmds.push({ type:'BAR', x:+bm[1], y:+bm[2], w:+bm[3], h:+bm[4] });
+      continue;
+    }
+    // LINE x,y,x2,y2
+    const lm = line.match(/^LINE\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+    if (lm) {
+      cmds.push({ type:'LINE', x1:+lm[1], y1:+lm[2], x2:+lm[3], y2:+lm[4] });
+    }
+  }
+  return cmds;
+}
+
+function drawLabelOnCanvas(canvas, pkg, dpi) {
+  readConfig();
+  const dpm    = dpi / 25.4;
+  const lw     = Math.round(labelsCfg.labelW_mm * dpm);
+  const lh     = Math.round(labelsCfg.labelH_mm * dpm);
+  const hgap   = Math.round(labelsCfg.colGap_mm * dpm);
+  const rollW  = lw * 2 + hgap;
+
+  // Escala para mostrar en pantalla: apuntamos a ~580px de ancho total
+  const targetW = Math.min(580, canvas.parentElement?.clientWidth - 32 || 560);
+  const scale   = targetW / rollW;
+
+  canvas.width  = Math.round(rollW * scale);
+  canvas.height = Math.round(lh    * scale);
+  canvas.style.width  = canvas.width  + 'px';
+  canvas.style.height = canvas.height + 'px';
+
+  const ctx = canvas.getContext('2d');
+
+  // Fondo blanco para la etiqueta
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Generar TSPL solo para este paquete (qty=1 para render)
+  const singlePkg = [{ ...pkg, labelsOverride: 1 }];
+  const tsplCode  = generateTsplTwoUp(singlePkg);
+  const cmds      = parseTsplCommands(tsplCode);
+
+  // Chequear overflow
+  const ov = buildLabelTspl._lastOverflow;
+  const overflowEl  = document.getElementById('renderOverflowAlert');
+  const overflowMsg = document.getElementById('renderOverflowMsg');
+  if (ov) {
+    overflowEl.style.display = '';
+    const needMm = Math.ceil(ov.totalH / dpm) + 2;
+    overflowMsg.textContent = `Necesita ≈${Math.ceil(ov.totalH/dpm)} mm, etiqueta es ${labelsCfg.labelH_mm} mm. Sube "Alto (mm)" a ${needMm}+`;
+  } else {
+    overflowEl.style.display = 'none';
+  }
+
+  // Borde de cada etiqueta (izq y der)
+  ctx.strokeStyle = '#cccccc';
+  ctx.lineWidth   = 1;
+  ctx.strokeRect(0.5,              0.5, Math.round(lw*scale)-1, Math.round(lh*scale)-1);
+  ctx.strokeRect(Math.round((lw+hgap)*scale)+0.5, 0.5, Math.round(lw*scale)-1, Math.round(lh*scale)-1);
+
+  // Línea separadora de columna (si hay gap)
+  if (hgap > 1) {
+    ctx.strokeStyle = '#444';
+    ctx.setLineDash([3,3]);
+    const midX = Math.round(lw * scale) + Math.round(hgap * scale / 2);
+    ctx.beginPath(); ctx.moveTo(midX,0); ctx.lineTo(midX, canvas.height); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Dibujar comandos
+  cmds.forEach(cmd => {
+    if (cmd.type === 'BAR') {
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(
+        Math.round(cmd.x * scale),
+        Math.round(cmd.y * scale),
+        Math.max(1, Math.round(cmd.w * scale)),
+        Math.max(1, Math.round(cmd.h * scale))
+      );
+    } else if (cmd.type === 'LINE') {
+      ctx.strokeStyle = '#111111';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(Math.round(cmd.x1 * scale), Math.round(cmd.y1 * scale));
+      ctx.lineTo(Math.round(cmd.x2 * scale), Math.round(cmd.y2 * scale));
+      ctx.stroke();
+    } else if (cmd.type === 'TEXT') {
+      // Escalar la altura del carácter TSC en dots al espacio de canvas pixels
+      // TSC_ch_dots × scale = altura visual proporcional en canvas
+      const TSC_CH = {'1':12,'2':20,'3':24,'4':32,'5':48};
+      const chDots = (TSC_CH[cmd.font] || 12) * (dpi===300 ? 1.48 : 1);
+      const px     = Math.max(7, Math.round(chDots * scale * 0.85)); // 0.85 = factor ajuste visual
+      ctx.font         = `bold ${px}px 'Courier New', monospace`;
+      ctx.fillStyle    = '#000000';
+      ctx.textBaseline = 'top';
+      ctx.fillText(cmd.text, Math.round(cmd.x * scale), Math.round(cmd.y * scale));
+    }
+  });
+
+  // Overlay: mm rulers en los bordes
+  ctx.fillStyle = 'rgba(59,130,246,0.12)';
+  ctx.font = `${Math.max(8, Math.round(8*scale*2))}px Inter,Arial,sans-serif`;
+  ctx.fillStyle = 'rgba(100,120,200,0.7)';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${labelsCfg.labelW_mm}mm`, 2, canvas.height - 2);
+  ctx.fillText(`${labelsCfg.labelW_mm}mm`, Math.round((lw+hgap)*scale)+2, canvas.height - 2);
+}
+
+function renderAll() {
+  readConfig();
+  const sel = getAllPackages().filter(p => selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona paquetes primero','error'); return; }
+  renderQueue = sel;
+  renderIndex = 0;
+  renderFrame();
+  switchTab('render', document.getElementById('tabRenderBtn'));
+}
+
+function renderFrame() {
+  const canvas  = document.getElementById('tsplCanvas');
+  const emptyEl = document.getElementById('renderEmpty');
+  const pageEl  = document.getElementById('renderPageInfo');
+  const metEl   = document.getElementById('renderMetrics');
+
+  if (!renderQueue.length) {
+    emptyEl.style.display = '';
+    canvas.style.display  = 'none'; return;
+  }
+
+  emptyEl.style.display = 'none';
+  canvas.style.display  = 'block';
+
+  const pkg = renderQueue[renderIndex];
+  readConfig();
+  drawLabelOnCanvas(canvas, pkg, labelsCfg.dpi);
+
+  pageEl.textContent = `${renderIndex+1} / ${renderQueue.length}`;
+
+  // Métricas
+  const dpm = labelsCfg.dpi/25.4;
+  const lw  = Math.round(labelsCfg.labelW_mm*dpm);
+  const lh  = Math.round(labelsCfg.labelH_mm*dpm);
+  metEl.innerHTML = [
+    `<span>📐 Etiqueta: <strong>${labelsCfg.labelW_mm}×${labelsCfg.labelH_mm} mm</strong></span>`,
+    `<span>🔵 ${lw}×${lh} dots @ ${labelsCfg.dpi}dpi</span>`,
+    `<span>🔡 Título: fuente <strong>${labelsCfg.fontTitle||'3'}</strong> · Cuerpo: fuente <strong>${labelsCfg.fontBody||'1'}</strong></span>`,
+    `<span>📦 <strong>${escHtml(pkg.lines[0]||'—')}</strong></span>`,
+  ].join('');
+}
+
+function renderPrev() { if (renderIndex>0) { renderIndex--; renderFrame(); } }
+function renderNext() { if (renderIndex<renderQueue.length-1) { renderIndex++; renderFrame(); } }
+
+// Re-renderizar cuando cambia la config (si el tab render está activo)
+function onConfigChange() {
+  readConfig();
+  renderPreview(); // actualizar vista HTML también
+  if (document.getElementById('tab-render').classList.contains('active') && renderQueue.length) {
+    renderFrame();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TSPL DEBUG PREVIEW
+// ═══════════════════════════════════════════════
+function previewTspl() {
+  const sel = getAllPackages().filter(p => selectedIds.has(p.id));
+  if (!sel.length) { toast('Selecciona al menos un paquete','error'); return; }
+  readConfig();
+  const code = generateTsplTwoUp(sel);
+  const win = window.open('', '_blank', 'width=860,height=700');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>TSPL Preview — INTERIORS v12</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0f1117; color:#e8ecf4; font-family:monospace; font-size:13px; padding:20px; }
+  h2 { font-size:15px; font-weight:700; color:#3b82f6; margin-bottom:12px; }
+  pre { background:#171b26; border:1px solid #2a3147; border-radius:8px; padding:16px; white-space:pre-wrap; word-break:break-all; line-height:1.7; overflow-y:auto; max-height:80vh; }
+  .note { font-size:12px; color:#8a93aa; margin-bottom:10px; line-height:1.6; }
+</style></head><body>
+<h2>🔍 Código TSPL generado — ${sel.length} paquete(s)</h2>
+<p class="note">Fuente título = "3" (16×24 dots @ 203dpi) · Fuente cuerpo = "1" (8×12 dots @ 203dpi)<br>
+SIZE en mm para compatibilidad TSC TE200 · 2 etiquetas por fila</p>
+<pre>${escHtml(code)}</pre>
+</body></html>`);
+  win.document.close();
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+// If existing areaMap from localStorage, pre-populate detectedSections so the panel has content if user re-loads
+if (areaMap.length) {
+  detectedSections = areaMap.map(r => ({ name: r.area||'', material: r.material||'', color: r.color||'#6366f1' }));
+}
+initManualBuilder();
+renderHistory();
+updateStats();
+initPrinter();
+</script>
+</body>
+</html>
